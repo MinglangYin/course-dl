@@ -1,0 +1,33 @@
+
+"""
+    Convolution Layer 1 [tf.nn.conv2d]
+        16 filters of width 5 and height 5
+        strides of 2 and 2
+        same padding
+    Batch Normalization 1 [tf.nn.batch_normalization]
+        Get the mean and variance using [tf.nn.moments]
+    ReLU Nonlinearlity 1 [tf.nn.relu]
+    Max Pooling 1 [tf.nn.max_pool]
+        kernels of width 3 and height 3
+        strides of 2 and 2
+    Convolution Layer 2
+        20 filters of width 5 and height 5
+        strides of 1 and 1
+        same padding
+    Batch Normalization 2
+    ReLU Nonlinearlity 2
+    Max Pooling 2
+        kernels of width 2 and height 2
+        strides of 2 and 2
+    Convolution Layer 3
+        20 filters of width 5 and height 5
+        strides of 1 and 1
+        same padding
+    Batch Normalization 3
+    ReLU Nonlinearlity 3
+    Dense Layer 1
+        Dropout with rate 0.3
+    Dense Layer 2
+        Dropout with rate 0.3
+    Dense Layer 3
+"""
