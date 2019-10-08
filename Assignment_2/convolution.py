@@ -15,7 +15,7 @@ def conv2d(inputs, filters, strides, padding):
 	:param padding: either "SAME" or "VALID", capitalization matters
 	:return: outputs, NumPy array or Tensor with shape [num_examples, output_height, output_width, output_channels]
 	"""
-
+ 
 	num_examples = inputs.shape[0]
 	in_height = inputs.shape[1]
 	in_width = inputs.shape[2]
@@ -32,25 +32,26 @@ def conv2d(inputs, filters, strides, padding):
 	channels_stride = strides[3]
 
 	## assertion
-	if input_in_channels!=filter_in_channels:
-		print('Error')
-		exit(-1)
+	assert input_in_channels == filter_in_channels
 
+	padY, padX = 0, 0
 	# Cleaning padding input
 	if padding == 'SAME':
-		padY = (filter_height-1)/2
-		padX = (filter_width-1)/2
-		inputs = np.pad(input, [padY, padX])
-		
-		fmap_height = (in_height + 2*padY - filter_height) / strideY + 1
-		fmap_width = (in_width + 2*padX - filter_width) / strideX + 1
-		feature_map = np.zeros((num_examples, 3, 3, 3))
+		padY = int(np.floor((filter_height-1)/2))
+		padX = int(np.floor((filter_width-1)/2))
+		if padY != 0 and padX != 0:
+			inputs = np.pad(inputs, ((padY, padY), (padX, padX)), 'constant')
+
+	fmap_height = int((in_height + 2*padY - filter_height) / strideY + 1)
+	fmap_width = int((in_width + 2*padX - filter_width) / strideX + 1)
+	feature_map = np.zeros((num_examples, fmap_height, fmap_width, filter_out_channels))
 
 	# Calculate output dimensions
-	# for i in range(0, num_examples):
-	# 	for j in range(0, input_in_channels):
-	# 		1
-	
+	for i in range(0, num_examples):
+		for j in range(0, filter_out_channels):
+			for m in range(0, fmap_height):
+				for n in range(0, fmap_width):
+					feature_map[i, m, n, j] = tf.reduce_sum(filters[:,:,:,j]*inputs[i, m:m+filter_height, n:n+filter_width, :]) 
 
 	return feature_map
 
@@ -123,8 +124,9 @@ def main():
 	# TODO: Add in any tests you may want to use to view the differences between your and TensorFlow's output
 	
 	same_test_0()
-
-	return
+	valid_test_0()
+	valid_test_1()
+	valid_test_2()
 
 if __name__ == '__main__':
 	main()

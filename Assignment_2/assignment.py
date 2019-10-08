@@ -8,10 +8,9 @@ import tensorflow as tf
 import numpy as np
 import random
 
-##need to do
-# modify batch size to 64
-# improve the accuracy
-
+np.random.seed(1234)
+tf.random.set_seed(1234)
+batch_size = 100
 
 class Model(tf.keras.Model):
 	def __init__(self):
@@ -25,17 +24,17 @@ class Model(tf.keras.Model):
 		self.batch_size = 100
 		self.num_classes = 2
 		# TODO: Initialize all hyperparameters
-		self.dropout_rate = 0.3
+		self.dropout_rate = 0.2
 
 		# TODO: Initialize all trainable parameters
 		self.wc1 = tf.Variable(tf.random.truncated_normal([5, 5, 3, 16], stddev=0.1, dtype=tf.float32))
 		self.wc2 = tf.Variable(tf.random.truncated_normal([5, 5, 16, 20], stddev=0.1, dtype=tf.float32))
 		self.wc3 = tf.Variable(tf.random.truncated_normal([5, 5, 20, 20], stddev=0.1, dtype=tf.float32))
-		self.wd1 = tf.Variable(tf.random.truncated_normal([80, 64], stddev=0.1, dtype=tf.float32))
-		self.wd2 = tf.Variable(tf.random.truncated_normal([64, 32], stddev=0.1, dtype=tf.float32))
+		self.wd1 = tf.Variable(tf.random.truncated_normal([80, 32], stddev=0.1, dtype=tf.float32))
+		self.wd2 = tf.Variable(tf.random.truncated_normal([32, 32], stddev=0.1, dtype=tf.float32))
 		self.wd3 = tf.Variable(tf.random.truncated_normal([32, self.num_classes], stddev=0.1, dtype=tf.float32))
 
-		self.bd1 = tf.Variable(tf.random.truncated_normal([1, 64], stddev=0.1, dtype=tf.float32))
+		self.bd1 = tf.Variable(tf.random.truncated_normal([1, 32], stddev=0.1, dtype=tf.float32))
 		self.bd2 = tf.Variable(tf.random.truncated_normal([1, 32], stddev=0.1, dtype=tf.float32))
 		self.bd3 = tf.Variable(tf.random.truncated_normal([1, 2], stddev=0.1, dtype=tf.float32))
 
@@ -78,21 +77,15 @@ class Model(tf.keras.Model):
 		
 		## Dense Layer 1
 		x = tf.nn.relu(tf.matmul(x, self.wd1) + self.bd1)
+		x = tf.nn.dropout(x, self.dropout_rate)
 
 		## Dense layer 2
 		x = tf.nn.relu(tf.matmul(x, self.wd2) + self.bd2)
+		x = tf.nn.dropout(x, self.dropout_rate)
 
 		## Dense layer 3
 		x = tf.matmul(x, self.wd3) + self.bd3
-		
-		## softmax
 		logits = tf.nn.softmax(x)
-		## explore
-		# prob = tf.nn.softmax(x)
-		# logits = 1/(1+tf.exp(-prob))
-		## from lab
-		# logits = 1/(1+tf.exp(-x))
-
 
 		return logits
 		
@@ -135,7 +128,6 @@ def train(model, train_inputs, train_labels):
 	shape (num_labels, num_classes)
 	:return: None
 	'''
-	
 
 	with tf.GradientTape() as tape:
 		logits = model.call(train_inputs)
@@ -157,7 +149,6 @@ def test(model, test_inputs, test_labels):
 	:return: test accuracy - this can be the average accuracy across 
 	all batches or the sum as long as you eventually divide it by batch_size
 	"""
-	batch_size = 100
 	num_batch = int(np.floor(test_inputs.shape[0]/batch_size))
 	accuracy = 0
 	for i in range(0, num_batch):
@@ -209,7 +200,6 @@ def main():
 	'''
 	## Parameters
 	epochs = 10
-	batch_size = 100
 
 	## import data
 	first_class, second_class = 3, 5 #cat and dogs
@@ -224,16 +214,15 @@ def main():
 	model = Model()
 
 	## training
-	# seed = 123456
-	num_batch = int(np.floor(image_train.shape[0]/batch_size))
+	num_flip = 10
+	num_batch = int(np.ceil(image_train.shape[0]/batch_size))
 	for epoch in range(0, epochs):
-		# tf.image.random_flip_left_right(image_train)
-		# image_train = tf.random.shuffle(image_train, seed)
-		# label_train = tf.random.shuffle(label_train, seed)
 		print(f'Epoch:{epoch}')
 		for i in range(0, num_batch):
+			sample = np.random.choice(batch_size, num_flip)
 			batch_image = image_train[i*batch_size:(i+1)*batch_size]
 			batch_label = label_train[i*batch_size:(i+1)*batch_size]
+			batch_image[sample] = tf.image.random_flip_left_right(batch_image[sample])
 			train(model, batch_image, batch_label)
 			
 	## testing
@@ -244,7 +233,7 @@ def main():
 	vis_image = image_test[0:100]
 	vis_label = label_test[0:100]
 	prob = model.call(vis_image, vis_label)
-	visualize_results(vis_image[0:10], prob[0:10], vis_label[0:100], 'dog', 'cat')
+	visualize_results(vis_image[0:10], prob[0:10], vis_label[0:10], 'dog', 'cat')
 
 if __name__ == '__main__':
 	main()
