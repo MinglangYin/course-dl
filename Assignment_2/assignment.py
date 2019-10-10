@@ -9,7 +9,7 @@ import numpy as np
 import random
 
 np.random.seed(1234)
-tf.random.set_seed(1234)
+tf.random.set_seed(123456)
 batch_size = 100
 
 class Model(tf.keras.Model):
@@ -24,18 +24,18 @@ class Model(tf.keras.Model):
 		self.batch_size = 100
 		self.num_classes = 2
 		# TODO: Initialize all hyperparameters
-		self.dropout_rate = 0.2
+		self.dropout_rate = 0.3
 
 		# TODO: Initialize all trainable parameters
 		self.wc1 = tf.Variable(tf.random.truncated_normal([5, 5, 3, 16], stddev=0.1, dtype=tf.float32))
 		self.wc2 = tf.Variable(tf.random.truncated_normal([5, 5, 16, 20], stddev=0.1, dtype=tf.float32))
 		self.wc3 = tf.Variable(tf.random.truncated_normal([5, 5, 20, 20], stddev=0.1, dtype=tf.float32))
-		self.wd1 = tf.Variable(tf.random.truncated_normal([80, 32], stddev=0.1, dtype=tf.float32))
-		self.wd2 = tf.Variable(tf.random.truncated_normal([32, 32], stddev=0.1, dtype=tf.float32))
-		self.wd3 = tf.Variable(tf.random.truncated_normal([32, self.num_classes], stddev=0.1, dtype=tf.float32))
+		self.wd1 = tf.Variable(tf.random.truncated_normal([320, 160], stddev=0.1, dtype=tf.float32))
+		self.wd2 = tf.Variable(tf.random.truncated_normal([160, 64], stddev=0.1, dtype=tf.float32))
+		self.wd3 = tf.Variable(tf.random.truncated_normal([64, self.num_classes], stddev=0.1, dtype=tf.float32))
 
-		self.bd1 = tf.Variable(tf.random.truncated_normal([1, 32], stddev=0.1, dtype=tf.float32))
-		self.bd2 = tf.Variable(tf.random.truncated_normal([1, 32], stddev=0.1, dtype=tf.float32))
+		self.bd1 = tf.Variable(tf.random.truncated_normal([1, 160], stddev=0.1, dtype=tf.float32))
+		self.bd2 = tf.Variable(tf.random.truncated_normal([1, 64], stddev=0.1, dtype=tf.float32))
 		self.bd3 = tf.Variable(tf.random.truncated_normal([1, 2], stddev=0.1, dtype=tf.float32))
 
 		self.optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
@@ -67,7 +67,10 @@ class Model(tf.keras.Model):
 		x = tf.nn.max_pool(x, ksize=[2, 2], strides=[2,2], padding='SAME')
 
 		## Convolution layer 3
-		x = tf.nn.conv2d(x, filters=self.wc3, strides=[2,2], padding='SAME')
+		if is_testing == False:
+			x = tf.nn.conv2d(x, filters=self.wc3, strides=[1,1], padding='SAME')
+		elif is_testing == True:
+			x = conv2d(x, filters=self.wc3, strides=[1, 1, 1, 1], padding='SAME')
 		mean, var = tf.nn.moments(x, axes=[0])
 		x = tf.nn.batch_normalization(x, mean, var, offset=0, scale=1, variance_epsilon=1e-8)
 		x = tf.nn.relu(x)
@@ -154,7 +157,7 @@ def test(model, test_inputs, test_labels):
 	for i in range(0, num_batch):
 		batch_image = test_inputs[i*batch_size:(i+1)*batch_size]
 		batch_label = test_labels[i*batch_size:(i+1)*batch_size]
-		logit = model(batch_image, batch_label)
+		logit = model.call(batch_image, is_testing=True)
 		batch_accuracy = model.accuracy(logit, batch_label)
 		print(f'batch accuracy is {batch_accuracy:.6f}')
 		accuracy += batch_accuracy
@@ -216,13 +219,20 @@ def main():
 	## training
 	num_flip = 10
 	num_batch = int(np.ceil(image_train.shape[0]/batch_size))
+	indices = tf.range(start=0, limit=tf.shape(image_train)[0], dtype=tf.int32)
+
 	for epoch in range(0, epochs):
 		print(f'Epoch:{epoch}')
+		##shuffle
+		shuffled_indices = tf.random.shuffle(indices)
+		image_train = tf.gather(image_train, shuffled_indices)
+		label_train = tf.gather(label_train, shuffled_indices)
 		for i in range(0, num_batch):
-			sample = np.random.choice(batch_size, num_flip)
+			# sample = np.random.choice(batch_size, num_flip)
 			batch_image = image_train[i*batch_size:(i+1)*batch_size]
 			batch_label = label_train[i*batch_size:(i+1)*batch_size]
-			batch_image[sample] = tf.image.random_flip_left_right(batch_image[sample])
+			# tmp = batch_image[sample]
+			# batch_image[sample] = tf.image.random_flip_left_right(batch_image[sample])
 			train(model, batch_image, batch_label)
 			
 	## testing
@@ -232,8 +242,8 @@ def main():
 	# visualization
 	vis_image = image_test[0:100]
 	vis_label = label_test[0:100]
-	prob = model.call(vis_image, vis_label)
-	visualize_results(vis_image[0:10], prob[0:10], vis_label[0:10], 'dog', 'cat')
+	prob = model.call(vis_image)
+	visualize_results(vis_image[0:10], prob[0:10], vis_label[0:10], 'cat', 'dog')
 
 if __name__ == '__main__':
 	main()

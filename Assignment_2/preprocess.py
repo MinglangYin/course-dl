@@ -58,6 +58,6 @@ def get_data(file_path, first_class, second_class):
 			image.append(np.reshape(inputs[i,:], (3, 32 ,32)))
 		
 	label = tf.one_hot(np.array(label), depth=2)
-	image = np.transpose(np.array(image)/255.0, [0,2,3,1])
+	image = tf.cast(np.transpose(np.array(image)/255.0, [0,2,3,1]), tf.float32)
 	return image, label
 	

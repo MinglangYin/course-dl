@@ -40,7 +40,7 @@ def conv2d(inputs, filters, strides, padding):
 		padY = int(np.floor((filter_height-1)/2))
 		padX = int(np.floor((filter_width-1)/2))
 		if padY != 0 and padX != 0:
-			inputs = np.pad(inputs, ((padY, padY), (padX, padX)), 'constant')
+			inputs = np.pad(inputs, ((0,0), (padY, padY), (padX, padX), (0,0)), 'constant')
 
 	fmap_height = int((in_height + 2*padY - filter_height) / strideY + 1)
 	fmap_width = int((in_width + 2*padX - filter_width) / strideX + 1)
@@ -53,7 +53,7 @@ def conv2d(inputs, filters, strides, padding):
 				for n in range(0, fmap_width):
 					feature_map[i, m, n, j] = tf.reduce_sum(filters[:,:,:,j]*inputs[i, m:m+filter_height, n:n+filter_width, :]) 
 
-	return feature_map
+	return tf.cast(feature_map, dtype=tf.float32)
 
 def same_test_0():
 	'''
