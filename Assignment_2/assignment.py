@@ -80,11 +80,13 @@ class Model(tf.keras.Model):
 		
 		## Dense Layer 1
 		x = tf.nn.relu(tf.matmul(x, self.wd1) + self.bd1)
-		x = tf.nn.dropout(x, self.dropout_rate)
+		if is_testing == False:
+			x = tf.nn.dropout(x, self.dropout_rate)
 
 		## Dense layer 2
 		x = tf.nn.relu(tf.matmul(x, self.wd2) + self.bd2)
-		x = tf.nn.dropout(x, self.dropout_rate)
+		if is_testing == False:
+			x = tf.nn.dropout(x, self.dropout_rate)
 
 		## Dense layer 3
 		x = tf.matmul(x, self.wd3) + self.bd3
