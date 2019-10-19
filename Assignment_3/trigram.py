@@ -3,90 +3,96 @@ import numpy as np
 from preprocess import get_data
 
 
-# class Model(tf.keras.Model):
-#     def __init__(self, vocab_size):
+class Model(tf.keras.Model):
+    def __init__(self, vocab_size):
 
-#         """
-#         The Model class predicts the next words in a sequence,
-#         Feel free to initialize any variables that you find necessary in the constructor.
+        """
+        The Model class predicts the next words in a sequence,
+        Feel free to initialize any variables that you find necessary in the constructor.
 
-#         vocab_size: The number of unique words in the data
-#         """
+        vocab_size: The number of unique words in the data
+        """
 
-#         super(Model, self).__init__()
+        super(Model, self).__init__()
 
-#         # TODO: initialize vocab_size, emnbedding_size
+        # TODO: initialize vocab_size, emnbedding_size
 
-#         self.vocab_size = vocab_size
-#         self.embedding_size = _
-#         self.batch_size = _
+        self.vocab_size = vocab_size
+        self.embedding_size = 30
+        self.batch_size = 100
 
-#         # TODO: initialize embeddings and forward pass weights (weights, biases)
+        # TODO: initialize embeddings and forward pass weights (weights, biases)
+        self.weights = 
+        self.biases = 
 
 
-#     def call(self,inputs):
-#         """
-#         - You must use an embedding layer as the first layer of your network (i.e. tf.nn.embedding_lookup)
-#         :param inputs: word ids of shape (batch_size, 2)
+    def call(self,inputs):
+        """
+        - You must use an embedding layer as the first layer of your network (i.e. tf.nn.embedding_lookup)
+        :param inputs: word ids of shape (batch_size, 2)
 
-#         :return: prbs: The batch element probabilities as a tensor of shape (batch_size, vocab_size)
-#         """
-#         pass
+        :return: prbs: The batch element probabilities as a tensor of shape (batch_size, vocab_size)
+        """
+        x = self.weights * inputs + self.biases
+        y = tf.layer.argmax(x)
+        return y
 
-#     def loss_function(self,logits,labels):
-#         """
-#         Calculates average cross entropy sequence to sequence loss of the prediction
-#         :param prbs: a matrix of shape (batch_size, vocab_size)
-#         :return: the loss of the model as a tensor of size 1
-#         """
-#         pass
+    def loss_function(self,logits,labels):
+        """
+        Calculates average cross entropy sequence to sequence loss of the prediction
+        :param prbs: a matrix of shape (batch_size, vocab_size)
+        :return: the loss of the model as a tensor of size 1
+        """
+        loss = tf.keras.losses.sparse_categorical_crossentropy(labels, logits)
+        return loss
 
-# def train(model, train_input, train_labels):
-#     """
-#     Runs through one epoch - all training examples. 
-#     You should take the train input and shape them into groups of two words.
-#     Remember to shuffle your inputs and labels - ensure that they are shuffled in the same order. 
-#     Also you should batch your input and labels here.
-#     :param model: the initilized model to use for forward and backward pass
-#     :param train_input: train inputs (all inputs for training) of shape (num_inputs,2)
-#     :param train_input: train labels (all labels for training) of shape (num_inputs,)
-#     :return: None
-#     """
-#     pass
+def train(model, train_input, train_labels):
+    """
+    Runs through one epoch - all training examples. 
+    You should take the train input and shape them into groups of two words.
+    Remember to shuffle your inputs and labels - ensure that they are shuffled in the same order. 
+    Also you should batch your input and labels here.
+    :param model: the initilized model to use for forward and backward pass
+    :param train_input: train inputs (all inputs for training) of shape (num_inputs,2)
+    :param train_input: train labels (all labels for training) of shape (num_inputs,)
+    :return: None
+    """
+    pass
 
-# def test(model, test_input, test_labels):
-#     """
-#     Runs through all test examples. You should take the test input and shape them into groups of two words.
-#     And test input should be batched here as well.
-#     :param model: the trained model to use for prediction
-#     :param test_input: train inputs (all inputs for testing) of shape (num_inputs,2)
-#     :param test_input: train labels (all labels for testing) of shape (num_inputs,)
+def test(model, test_input, test_labels):
+    """
+    Runs through all test examples. You should take the test input and shape them into groups of two words.
+    And test input should be batched here as well.
+    :param model: the trained model to use for prediction
+    :param test_input: train inputs (all inputs for testing) of shape (num_inputs,2)
+    :param test_input: train labels (all labels for testing) of shape (num_inputs,)
 
-#     :returns: the perplexity of the test set
-#     """
-#     pass
+    :returns: the perplexity of the test set
+    """
+    perplexity = ..
+    return preplexity
 
-# def generate_sentence(word1, word2, length, vocab,model):
-#     """
-#     Given initial 2 words, print out predicted sentence of target length.
+def generate_sentence(word1, word2, length, vocab,model):
+    """
+    Given initial 2 words, print out predicted sentence of target length.
 
-#     :param word1: string, first word
-#     :param word2: string, second word
-#     :param length: int, desired sentence length
-#     :param vocab: dictionary, word to id mapping
-#     :param model: trained trigram model
+    :param word1: string, first word
+    :param word2: string, second word
+    :param length: int, desired sentence length
+    :param vocab: dictionary, word to id mapping
+    :param model: trained trigram model
 
-#     """
-#     reverse_vocab = {idx:word for word, idx in vocab.items()}
-#     output_string = np.zeros((1,length), dtype=np.int)
-#     output_string[:,:2] = vocab[word1], vocab[word2]
+    """
+    reverse_vocab = {idx:word for word, idx in vocab.items()}
+    output_string = np.zeros((1,length), dtype=np.int)
+    output_string[:,:2] = vocab[word1], vocab[word2]
 
-#     for end in range(2,length):
-#         start = end - 2
-#         output_string[:, end] = np.argmax(model(output_string[:,start:end]), axis=1)
-#     text = [reverse_vocab[i] for i in list(output_string[0])]
+    for end in range(2,length):
+        start = end - 2
+        output_string[:, end] = np.argmax(model(output_string[:,start:end]), axis=1)
+    text = [reverse_vocab[i] for i in list(output_string[0])]
     
-#     print(" ".join(text))
+    print(" ".join(text))
 
 def main():
     # TODO: Pre-process and vectorize the data using get_data from preprocess
