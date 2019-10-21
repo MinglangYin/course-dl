@@ -17,6 +17,7 @@ def get_data(train_file, test_file):
     train_list = []
     with open(train_file, 'r') as fp:
         line = fp.readline()
+        line = fp.readline()
         num_line = 1
         while line:
             train_list.append(line)
@@ -27,6 +28,7 @@ def get_data(train_file, test_file):
     test_list = []
     with open(test_file, 'r') as fp:
         line = fp.readline()
+        line = fp.readline()
         num_line = 1
         while line:
             test_list.append(line)
@@ -34,27 +36,25 @@ def get_data(train_file, test_file):
             num_line += 1
 
     # TODO: read in and tokenize training data
-    dict_train = {}
+    dict_vocab = {}
     index = 0
     for sentence in train_list:
         token = sentence.split(' ')
         for word in token: 
-            if word in dict_train:
+            if word in dict_vocab:
                 pass
             else:
-                dict_train[word] = index
+                dict_vocab[word] = index
                 index += 1
 
     # TODO: read in and tokenize testing data
-    dict_test = {}
-    index = 0
     for sentence in test_list:
         token = sentence.split(' ')
         for word in token: 
-            if word in dict_test:
+            if word in dict_vocab:
                 pass
             else:
-                dict_train[word] = index
+                dict_vocab[word] = index
                 index += 1
 
     # TODO: return tuple of training tokens, testing tokens, and the vocab dictionary.
@@ -63,7 +63,7 @@ def get_data(train_file, test_file):
         token = sentence.split(' ')
         tmp_indices = []
         for word in token:
-            tmp_indices.append(dict_train.get(word))
+            tmp_indices.append(dict_vocab.get(word))
         train_data.append(tmp_indices)
 
     test_data = []
@@ -71,7 +71,7 @@ def get_data(train_file, test_file):
         token = sentence.split(' ')
         tmp_indices = []
         for word in token:
-            tmp_indices.append(dict_test.get(word))
+            tmp_indices.append(dict_vocab.get(word))
         test_data.append(tmp_indices)
 
-    return train_data, test_data
+    return train_data, test_data, dict_vocab
