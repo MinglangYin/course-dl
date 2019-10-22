@@ -24,7 +24,7 @@ class Model(tf.keras.Model):
         self.vocab_size = vocab_size
         self.window_size = 20
         self.embedding_size = 50
-        self.batch_size = 100
+        self.batch_size = 128
 
         # TODO: initialize embeddings and forward pass weights (weights, biases)
         # Note: You can now use tf.keras.layers!
@@ -41,7 +41,7 @@ class Model(tf.keras.Model):
         # self.dense = tf.keras.layers.Dense(self.vocab_size*self.window_size)
         self.dense = tf.keras.layers.Dense(self.vocab_size)
 
-        self.optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
+        self.optimizer = tf.keras.optimizers.Adam(learning_rate=0.01)
 
     def call(self, inputs, initial_state):
         """
@@ -64,7 +64,7 @@ class Model(tf.keras.Model):
 
         y = self.gru_1(x)
         y_out, l_s = y[0], y[1]
-        logits = self.dense(y_out)
+        logits = tf.nn.softmax(self.dense(y_out))
         # print(logits.shape)
         logits = tf.reshape(logits, [l_s.shape[0], self.window_size, self.vocab_size])
         return logits, l_s
@@ -80,7 +80,7 @@ class Model(tf.keras.Model):
         #We recommend using tf.keras.losses.sparse_categorical_crossentropy
         #https://www.tensorflow.org/api_docs/python/tf/keras/losses/sparse_categorical_crossentropy
 
-        loss = tf.reduce_mean(tf.keras.losses.sparse_categorical_crossentropy(labels, logits, from_logits=True))
+        loss = tf.reduce_mean(tf.keras.losses.sparse_categorical_crossentropy(labels, logits))
         return loss
 
 def train(model, train_inputs, train_labels):
@@ -93,7 +93,7 @@ def train(model, train_inputs, train_labels):
     :return: None
     """
     epochs = 1
-    batch_size = 100
+    batch_size = 128
     num_batch = int(np.ceil(len(train_inputs)/batch_size))
 
     for _ in range(0, epochs):
@@ -141,7 +141,7 @@ def test(model, test_inputs, test_labels):
         logits, state = model.call(batch_input, None)
         loss += model.loss(logits, batch_label)
 
-    perplexity = np.exp(loss/num_predictions)
+    perplexity = np.exp(loss/num_batch)
     return perplexity
 
 def generate_sentence(word1, length, vocab,model):

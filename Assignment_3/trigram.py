@@ -2,7 +2,7 @@ import tensorflow as tf
 import numpy as np
 from preprocess import get_data
 
-
+# tf.random.set_seed(123)
 class Model(tf.keras.Model):
     def __init__(self, vocab_size):
 
@@ -16,14 +16,17 @@ class Model(tf.keras.Model):
 
         # TODO: initialize vocab_size, emnbedding_size
         self.vocab_size = vocab_size
-        self.embedding_size = 100
-        self.batch_size = 100
+        self.embedding_size = 40
+        self.batch_size = 128
 
         # TODO: initialize embeddings and forward pass weights (weights, biases)
-        self.w1 = tf.Variable(tf.random.truncated_normal([2*self.embedding_size, 2*self.embedding_size], stddev=0.05, dtype=tf.float32))
-        self.w2 = tf.Variable(tf.random.truncated_normal([2*self.embedding_size, self.vocab_size], stddev=0.05, dtype=tf.float32))
-        self.b1 = tf.Variable(tf.random.truncated_normal([1, 2*self.embedding_size], stddev=0.05, dtype=tf.float32))
+        self.w1 = tf.Variable(tf.random.truncated_normal([2*self.embedding_size, 200], stddev=0.05, dtype=tf.float32))
+        self.w2 = tf.Variable(tf.random.truncated_normal([200, self.vocab_size], stddev=0.05, dtype=tf.float32))
+        # self.w3 = tf.Variable(tf.random.truncated_normal([2*self.embedding_size, self.vocab_size], stddev=0.05, dtype=tf.float32))
+        
+        self.b1 = tf.Variable(tf.random.truncated_normal([1, 200], stddev=0.05, dtype=tf.float32))
         self.b2 = tf.Variable(tf.random.truncated_normal([1, self.vocab_size], stddev=0.05, dtype=tf.float32))
+        # self.b3 = tf.Variable(tf.random.truncated_normal([1, self.vocab_size], stddev=0.05, dtype=tf.float32))
 
         self.E = tf.Variable(tf.random.truncated_normal([self.vocab_size, self.embedding_size], stddev=0.05, dtype=tf.float32))
 
@@ -42,9 +45,14 @@ class Model(tf.keras.Model):
 
         x = tf.matmul(x, self.w1) + self.b1
         x = tf.nn.relu(x)
+        # x = tf.nn.dropout(x, self.dropout_rate)
 
         y = tf.matmul(x, self.w2) + self.b2
-        # y = tf.layers.softmax(x)
+        # x = tf.nn.relu(x)
+        # x = tf.nn.dropout(x, self.dropout_rate)
+
+        # x = tf.matmul(x, self.w3) + self.b3
+        # y = tf.nn.softmax(x)
         return y
 
     def loss_function(self,logits,labels):
@@ -53,7 +61,7 @@ class Model(tf.keras.Model):
         :param prbs: a matrix of shape (batch_size, vocab_size)
         :return: the loss of the model as a tensor of size 1
         """
-        loss = tf.reduce_mean(tf.keras.losses.sparse_categorical_crossentropy(labels, logits))
+        loss = tf.reduce_mean(tf.keras.losses.sparse_categorical_crossentropy(labels, logits, from_logits=True))
         return loss
 
 def train(model, train_input, train_labels):
@@ -68,7 +76,7 @@ def train(model, train_input, train_labels):
     :return: None
     """
     epochs = 1
-    batch_size = 100
+    batch_size = 128
 
     num_batch = int(np.ceil(train_input.shape[0]/batch_size))
     for _ in range(0, epochs):
@@ -171,8 +179,7 @@ def main():
     print(perplexity)
 
     # try generate_sentence
-    
-    # generate_sentence(dict_vocab(train_data[0][0]), train_data[0][1], 4, dict_vocab, model)
+    generate_sentence('this', 'is', 20, dict_vocab, model)
 
 if __name__ == '__main__':
     main()
