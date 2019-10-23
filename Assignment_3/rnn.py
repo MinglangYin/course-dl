@@ -89,7 +89,7 @@ def train(model, train_inputs, train_labels):
     num_batch = round(len(train_labels)/bsz)
     for i in range(num_batch):
         batch_input = train_inputs[bsz*i:(i+1)*bsz, :]
-        batch_labels = train_labels[bsz*i:bsz*(i+1)]
+        batch_labels = train_labels[bsz*i:(i+1)*bsz, :]
         with tf.GradientTape() as tape:
             logits, state = model.call(batch_input, None)
             loss = model.loss(logits, batch_labels)
@@ -174,7 +174,7 @@ def main():
     train_labels = []
     for i in range(len(train_data_raw)-window_size):
         train_input.append(train_data_raw[i:i+window_size])
-        train_labels.append(train_data_raw[i+window_size])
+        train_labels.append(train_data_raw[i+window_size:i+window_size+1])
     train_input = np.asarray(train_input, dtype=int)
     train_labels = np.asarray(train_labels, dtype=int)
 
@@ -182,7 +182,7 @@ def main():
     test_labels = []
     for i in range(len(test_data_raw)-window_size):
         test_input.append(test_data_raw[i:i+window_size])
-        test_labels.append(test_data_raw[i+window_size])
+        test_labels.append(test_data_raw[i+window_size:i+window_size+1])
     test_input = np.asarray(test_input, dtype=int)
     test_labels = np.asarray(test_labels, dtype=int)
 
