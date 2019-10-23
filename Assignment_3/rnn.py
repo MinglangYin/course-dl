@@ -24,8 +24,6 @@ class Model(tf.keras.Model):
         # - use tf.keras.layers.Dense for feed forward layers: https://www.tensorflow.org/api_docs/python/tf/keras/layers/Dense
         # - and use tf.keras.layers.GRU or tf.keras.layers.LSTM for your RNN 
         
-        # self.w1 = tf.Variable(tf.random.truncated_normal([2*self.embedding_size, 2*self.embedding_size], stddev=0.1, dtype=tf.float32))
-        # self.b1 = tf.Variable(tf.random.truncated_normal([1, self.embedding_size], stddev=0.1, dtype=tf.float32))
         self.E = tf.Variable(tf.random.truncated_normal([self.vocab_size, self.embedding_size], stddev=0.1, dtype=tf.float32))
         self.gru_1 = tf.keras.layers.GRU(200, return_sequences=True, return_state=True)
         self.dense = tf.keras.layers.Dense(self.vocab_size, activation='softmax')
@@ -46,13 +44,8 @@ class Model(tf.keras.Model):
         -Note 2: You only need to use the initial state during generation. During training and testing it can be None.
         """
         x = tf.nn.embedding_lookup(self.E, inputs)
-        # y = self.rnn_1(x)
-        # y = self.rnn_2(x)
-        # l_out, l_s, l_c = y[0], y[1], y[2]
-
         x = self.gru_1(x)
         l_out, l_s = x[0], x[1]
-        print(l_out.shape)
         logits = self.dense(l_out)
         return logits, l_s
 
@@ -170,38 +163,36 @@ def main():
     # TO-DO:  Separate your train and test data into inputs and labels
     window_size = 20
     ## train data
-    train_data_cont = np.concatenate(train_data_raw)
-    num_train = int(np.floor(len(train_data_cont)/window_size))
-    train_data = train_data_cont[0:window_size*num_train].reshape([num_train, window_size])
+    num_train = int(np.floor(len(train_data_raw)/window_size))
+    train_data = []
     train_labels = []
     num_train = int(np.floor(len(train_data_raw)/window_size))
     for i in range(num_train):
-        train_input.append(train_data_raw[i*window_size:(i+1)*window_size])
+        train_data.append(train_data_raw[i*window_size:(i+1)*window_size])
         train_labels.append(train_data_raw[i*window_size+1:(i+1)*window_size+1])
-    train_input = np.asarray(train_input, dtype=int)
+    train_input = np.asarray(train_data, dtype=int)
     train_labels = np.asarray(train_labels, dtype=int)
 
     ## test data
-    test_data_cont = np.concatenate(test_data_raw)
-    num_test = int(np.floor(len(test_data_cont)/window_size))
-    test_data = test_data_cont[0:window_size*num_test].reshape([num_test, window_size])
+    num_test = int(np.floor(len(test_data_raw)/window_size))
+    test_data = []
     test_labels = []
     num_test = int(np.floor(len(test_data_raw)/window_size))
     for i in range(num_test-1):
-        test_input.append(test_data_raw[i*window_size:(i+1)*window_size])
+        test_data.append(test_data_raw[i*window_size:(i+1)*window_size])
         test_labels.append(test_data_raw[i*window_size+1:(i+1)*window_size+1])
 
-    test_input = np.asarray(test_input, dtype=int)
+    test_input = np.asarray(test_data, dtype=int)
     test_labels = np.asarray(test_labels, dtype=int)
 
     # TODO: initialize model and tensorflow variables
     model = Model(vocab_size)
 
     # TODO: Set-up the training step
-    train(model, train_data, train_labels)
+    train(model, train_input, train_labels)
 
     # TODO: Set up the testing steps
-    perplexity = test(model, test_data, test_labels)
+    perplexity = test(model, test_input, test_labels)
 
     # Print out perplexity 
     print(f'perplexity: {perplexity}')
