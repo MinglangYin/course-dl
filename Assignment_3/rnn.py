@@ -33,10 +33,11 @@ class Model(tf.keras.Model):
         
         # self.w1 = tf.Variable(tf.random.truncated_normal([2*self.embedding_size, 2*self.embedding_size], stddev=0.1, dtype=tf.float32))
         # self.b1 = tf.Variable(tf.random.truncated_normal([1, self.embedding_size], stddev=0.1, dtype=tf.float32))
-        self.E = tf.Variable(tf.random.truncated_normal([self.vocab_size, self.embedding_size], stddev=0.1, dtype=tf.float32))
+        self.E = tf.Variable(tf.random.truncated_normal([self.vocab_size, self.embedding_size], stddev=0.01, dtype=tf.float32))
 
         # self.rnn_1 = tf.keras.layers.LSTM(self.window_size, return_sequences=True, return_state=True)
         self.gru_1 = tf.keras.layers.GRU(self.window_size, return_sequences=True, return_state=True)
+        # self.gru_2 = tf.keras.layers.GRU(self.window_size, return_sequences=True, return_state=True)
         # self.rnn_2 = tf.keras.layers.LSTM(self.window_size, return_sequences=True, return_state=True)
         # self.dense = tf.keras.layers.Dense(self.vocab_size*self.window_size)
         self.dense = tf.keras.layers.Dense(self.vocab_size)
@@ -62,11 +63,12 @@ class Model(tf.keras.Model):
         # y = self.rnn_2(x)
         # l_out, l_s, l_c = y[0], y[1], y[2]
 
-        y = self.gru_1(x)
-        y_out, l_s = y[0], y[1]
-        logits = tf.nn.softmax(self.dense(y_out))
+        x = self.gru_1(x)
+        # x = self.gru_2(x)
+        l_out, l_s = x[0], x[1]
+        logits = self.dense(l_out)
         # print(logits.shape)
-        logits = tf.reshape(logits, [l_s.shape[0], self.window_size, self.vocab_size])
+        # logits = tf.reshape(logits, [l_s.shape[0], self.window_size, self.vocab_size])
         return logits, l_s
 
     def loss(self, logits, labels):
@@ -144,7 +146,7 @@ def test(model, test_inputs, test_labels):
     perplexity = np.exp(loss/num_batch)
     return perplexity
 
-def generate_sentence(word1, length, vocab,model):
+def generate_sentence(word1, length, vocab, model):
     """
     Takes a model, vocab, selects from the most likely next word from the model's distribution
 
@@ -224,6 +226,10 @@ def main():
 
     # Print out perplexity 
     print(f'perplexity: {perplexity}')
+
+    # try generate_sentence
+    generate_sentence('this', 20, dict_vocab, model)
+
 
 if __name__ == '__main__':
     main()

@@ -2,7 +2,7 @@ import tensorflow as tf
 import numpy as np
 from preprocess import get_data
 
-# tf.random.set_seed(123)
+tf.random.set_seed(123)
 class Model(tf.keras.Model):
     def __init__(self, vocab_size):
 
@@ -20,15 +20,11 @@ class Model(tf.keras.Model):
         self.batch_size = 128
 
         # TODO: initialize embeddings and forward pass weights (weights, biases)
-        self.w1 = tf.Variable(tf.random.truncated_normal([2*self.embedding_size, 200], stddev=0.05, dtype=tf.float32))
-        self.w2 = tf.Variable(tf.random.truncated_normal([200, self.vocab_size], stddev=0.05, dtype=tf.float32))
-        # self.w3 = tf.Variable(tf.random.truncated_normal([2*self.embedding_size, self.vocab_size], stddev=0.05, dtype=tf.float32))
-        
-        self.b1 = tf.Variable(tf.random.truncated_normal([1, 200], stddev=0.05, dtype=tf.float32))
-        self.b2 = tf.Variable(tf.random.truncated_normal([1, self.vocab_size], stddev=0.05, dtype=tf.float32))
-        # self.b3 = tf.Variable(tf.random.truncated_normal([1, self.vocab_size], stddev=0.05, dtype=tf.float32))
-
-        self.E = tf.Variable(tf.random.truncated_normal([self.vocab_size, self.embedding_size], stddev=0.05, dtype=tf.float32))
+        self.w1 = tf.Variable(tf.random.truncated_normal([2*self.embedding_size, 200], stddev=0.1, dtype=tf.float32))
+        self.w2 = tf.Variable(tf.random.truncated_normal([200, self.vocab_size], stddev=0.1, dtype=tf.float32)) 
+        self.b1 = tf.Variable(tf.random.truncated_normal([1, 200], stddev=0.1, dtype=tf.float32))
+        self.b2 = tf.Variable(tf.random.truncated_normal([1, self.vocab_size], stddev=0.1, dtype=tf.float32))
+        self.E = tf.Variable(tf.random.truncated_normal([self.vocab_size, self.embedding_size], stddev=0.1, dtype=tf.float32))
 
         self.optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
 
@@ -39,20 +35,16 @@ class Model(tf.keras.Model):
 
         :return: prbs: The batch element probabilities as a tensor of shape (batch_size, vocab_size)
         """
-        x = tf.nn.embedding_lookup(self.E, inputs)
-        bsz = x.shape[0]
-        x = tf.reshape(x, shape=[bsz, 2*self.embedding_size])
+        # x = tf.nn.embedding_lookup(self.E, inputs)
+        # bsz = x.shape[0]
+        # x = tf.reshape(x, shape=[bsz, 2*self.embedding_size])
 
+        embed_1 = tf.nn.embedding_lookup(self.E, inputs[:,0])
+        embed_2 = tf.nn.embedding_lookup(self.E, inputs[:,1])
+        x = tf.concat([embed_1, embed_2], axis=1)
         x = tf.matmul(x, self.w1) + self.b1
         x = tf.nn.relu(x)
-        # x = tf.nn.dropout(x, self.dropout_rate)
-
         y = tf.matmul(x, self.w2) + self.b2
-        # x = tf.nn.relu(x)
-        # x = tf.nn.dropout(x, self.dropout_rate)
-
-        # x = tf.matmul(x, self.w3) + self.b3
-        # y = tf.nn.softmax(x)
         return y
 
     def loss_function(self,logits,labels):
@@ -106,11 +98,26 @@ def test(model, test_input, test_labels):
 
     :returns: the perplexity of the test set
     """
-    # num_test = test_input.shape[0]
+    # batch_size = 1000
+    # num_batch = int(np.ceil(len(test_input)/batch_size))
+    # loss = 0
+    # for batch in range(0, num_batch):
+    #     if batch == num_batch-1:
+    #         batch_input = test_input[batch*batch_size:-1]
+    #         batch_label = test_labels[batch*batch_size:-1]
+    #     else:
+    #         batch_input = test_input[batch*batch_size:(batch+1)*batch_size]
+    #         batch_label = test_labels[batch*batch_size:(batch+1)*batch_size]
+
+    #     logits = model.call(batch_input)
+    #     loss += model.loss_function(logits, batch_label)
+    # loss = loss/num_batch
+    # print(f'test loss: {loss}')
+    # perplexity = np.exp(loss)
+
     logits = model.call(test_input)
-    print(logits.shape)
     loss = model.loss_function(logits, test_labels)
-    print(loss)
+    print(f'test loss: {loss}')
     perplexity = np.exp(loss)
     return perplexity
 
@@ -142,27 +149,44 @@ def main():
     test_file = './data/test.txt'
     train_data_raw, test_data_raw, dict_vocab = get_data(train_file, test_file)
     vocab_size = len(dict_vocab)
+    print(vocab_size)
 
     # TO-DO:  Separate your train and test data into inputs and labels
+    # train_labels = []
+    # train_data = []
+    # num_sen = len(train_data_raw)
+    # for i in range(0, num_sen):
+    #     num_word = len(train_data_raw[i])
+    #     for j in range(0, num_word-2):
+    #         train_data.append(train_data_raw[i][j:j+2])
+    #         train_labels.append(train_data_raw[i][j+2])
+    # train_data = np.asarray(train_data, dtype=int)
+    # train_labels = np.asarray(train_labels, dtype=int)
+
+    # test_labels = []
+    # test_data = []    
+    # num_sen = len(test_data_raw)
+    # for i in range(0, num_sen):
+    #     num_word = len(test_data_raw[i])
+    #     for j in range(0, num_word-2):
+    #         test_data.append(test_data_raw[i][j:j+2])
+    #         test_labels.append(test_data_raw[i][j+2])
+    # test_data = np.asarray(test_data, dtype=int)
+    # test_labels = np.asarray(test_labels, dtype=int)
+
     train_labels = []
     train_data = []
-    num_sen = len(train_data_raw)
-    for i in range(0, num_sen):
-        num_word = len(train_data_raw[i])
-        for j in range(0, num_word-2):
-            train_data.append(train_data_raw[i][j:j+2])
-            train_labels.append(train_data_raw[i][j+2])
+    for i in range(0, len(train_data_raw)-2):
+        train_data.append(train_data_raw[i:i+2])
+        train_labels.append(train_data_raw[i+2])
     train_data = np.asarray(train_data, dtype=int)
     train_labels = np.asarray(train_labels, dtype=int)
 
     test_labels = []
     test_data = []    
-    num_sen = len(test_data_raw)
-    for i in range(0, num_sen):
-        num_word = len(test_data_raw[i])
-        for j in range(0, num_word-2):
-            test_data.append(test_data_raw[i][j:j+2])
-            test_labels.append(test_data_raw[i][j+2])
+    for i in range(0, len(test_data_raw)-2):
+        test_data.append(test_data_raw[i:i+2])
+        test_labels.append(test_data_raw[i+2])
     test_data = np.asarray(test_data, dtype=int)
     test_labels = np.asarray(test_labels, dtype=int)
 
