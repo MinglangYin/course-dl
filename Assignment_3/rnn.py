@@ -30,12 +30,7 @@ class Model(tf.keras.Model):
         # Note: You can now use tf.keras.layers!
         # - use tf.keras.layers.Dense for feed forward layers: https://www.tensorflow.org/api_docs/python/tf/keras/layers/Dense
         # - and use tf.keras.layers.GRU or tf.keras.layers.LSTM for your RNN 
-        
-        # self.w1 = tf.Variable(tf.random.truncated_normal([2*self.embedding_size, 2*self.embedding_size], stddev=0.1, dtype=tf.float32))
-        # self.b1 = tf.Variable(tf.random.truncated_normal([1, self.embedding_size], stddev=0.1, dtype=tf.float32))
-        self.E = tf.Variable(tf.random.truncated_normal([self.vocab_size, self.embedding_size], stddev=0.01, dtype=tf.float32))
-
-        # self.rnn_1 = tf.keras.layers.LSTM(self.window_size, return_sequences=True, return_state=True)
+        self.E = tf.Variable(tf.random.truncated_normal([self.vocab_size, self.embedding_size], stddev=0.1, dtype=tf.float32))
         self.gru_1 = tf.keras.layers.GRU(self.window_size, return_sequences=True, return_state=True)
         # self.gru_2 = tf.keras.layers.GRU(self.window_size, return_sequences=True, return_state=True)
         # self.rnn_2 = tf.keras.layers.LSTM(self.window_size, return_sequences=True, return_state=True)
@@ -59,10 +54,6 @@ class Model(tf.keras.Model):
         -Note 2: You only need to use the initial state during generation. During training and testing it can be None.
         """
         x = tf.nn.embedding_lookup(self.E, inputs)
-        # y = self.rnn_1(x)
-        # y = self.rnn_2(x)
-        # l_out, l_s, l_c = y[0], y[1], y[2]
-
         x = self.gru_1(x)
         # x = self.gru_2(x)
         l_out, l_s = x[0], x[1]
@@ -94,26 +85,18 @@ def train(model, train_inputs, train_labels):
     :param train_labels: train labels (all labels for training) of shape (num_labels,)
     :return: None
     """
-    epochs = 1
-    batch_size = 128
-    num_batch = int(np.ceil(len(train_inputs)/batch_size))
+    bsz = model.batch_size
+    num_batch = round(len(train_labels)/bsz)
+    for i in range(num_batch):
+        batch_input = train_inputs[bsz*i:(i+1)*bsz, :]
+        batch_labels = train_labels[bsz*i:bsz*(i+1)]
+        with tf.GradientTape() as tape:
+            logits, state = model.call(batch_input, None)
+            loss = model.loss(logits, batch_labels)
+            print(f'loss: {loss}')
 
-    for _ in range(0, epochs):
-        for batch in range(0, num_batch):
-            if batch == num_batch-1:
-                batch_input = train_inputs[batch*batch_size:-1]
-                batch_label = train_labels[batch*batch_size:-1]
-            else:
-                batch_input = train_inputs[batch*batch_size:(batch+1)*batch_size]
-                batch_label = train_labels[batch*batch_size:(batch+1)*batch_size]
-            
-            with tf.GradientTape() as tape:
-                logits, state = model.call(batch_input, None)
-                loss = model.loss(logits, batch_label)
-                print(f'loss: {loss}')
-
-            gradients = tape.gradient(loss, model.trainable_variables)
-            model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))	
+        gradients = tape.gradient(loss, model.trainable_variables)
+        model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))	
     
 
 def test(model, test_inputs, test_labels):
@@ -187,28 +170,21 @@ def main():
     # TO-DO:  Separate your train and test data into inputs and labels
     window_size = 20
     ## train data
-    train_data_cont = np.concatenate(train_data_raw)
-    num_train = int(np.floor(len(train_data_cont)/window_size))
-    train_data = train_data_cont[0:window_size*num_train].reshape([num_train, window_size])
+    train_input = []
     train_labels = []
-    for i in range(0, num_train):
-        if i == num_train-1:
-            train_labels.append(np.append(train_data[i][1:], train_data_cont[num_train*window_size]))
-        else:
-            train_labels.append( np.append(train_data[i][1:], train_data[i+1][0]) )
-    train_labels = np.asarray(train_labels)
+    for i in range(len(train_data_raw)-window_size):
+        train_input.append(train_data_raw[i:i+window_size])
+        train_labels.append(train_data_raw[i+window_size])
+    train_input = np.asarray(train_input, dtype=int)
+    train_labels = np.asarray(train_labels, dtype=int)
 
-    ## test data
-    test_data_cont = np.concatenate(test_data_raw)
-    num_test = int(np.floor(len(test_data_cont)/window_size))
-    test_data = test_data_cont[0:window_size*num_test].reshape([num_test, window_size])
+    test_input = []
     test_labels = []
-    for i in range(0, num_test):
-        if i == num_test-1:
-            test_labels.append(np.append(test_data[i][1:], test_data_cont[num_test*window_size]))
-        else:
-            test_labels.append( np.append(test_data[i][1:], test_data[i+1][0]) )
-    test_labels = np.asarray(test_labels)
+    for i in range(len(test_data_raw)-window_size):
+        test_input.append(test_data_raw[i:i+window_size])
+        test_labels.append(test_data_raw[i+window_size])
+    test_input = np.asarray(test_input, dtype=int)
+    test_labels = np.asarray(test_labels, dtype=int)
 
     # train_data = [sentence[:-1] for sentence in train_data_raw]
     # train_labels = [sentence[1:] for sentence in train_data_raw]
@@ -219,10 +195,10 @@ def main():
     model = Model(vocab_size)
 
     # TODO: Set-up the training step
-    train(model, train_data, train_labels)
+    train(model, train_input, train_labels)
 
     # TODO: Set up the testing steps
-    perplexity = test(model, test_data, test_labels)
+    perplexity = test(model, test_input, test_labels)
 
     # Print out perplexity 
     print(f'perplexity: {perplexity}')
