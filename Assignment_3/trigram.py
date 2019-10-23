@@ -40,7 +40,7 @@ class Model(tf.keras.Model):
         x = tf.concat([embed_1, embed_2], axis=1)
         x = tf.matmul(x, self.w1) + self.b1
         x = tf.nn.relu(x)
-        y = tf.matmul(x, self.w2) + self.b2
+        y = tf.nn.softmax(tf.matmul(x, self.w2) + self.b2)
         return y
 
     def loss_function(self,logits,labels):
@@ -49,7 +49,7 @@ class Model(tf.keras.Model):
         :param prbs: a matrix of shape (batch_size, vocab_size)
         :return: the loss of the model as a tensor of size 1
         """
-        loss = tf.reduce_mean(tf.keras.losses.sparse_categorical_crossentropy(labels, logits, from_logits=True))
+        loss = tf.reduce_mean(tf.keras.losses.sparse_categorical_crossentropy(labels, logits))
         return loss
 
 def train(model, train_input, train_labels):
