@@ -40,7 +40,8 @@ class Model(tf.keras.Model):
         x = tf.concat([embed_1, embed_2], axis=1)
         x = tf.matmul(x, self.w1) + self.b1
         x = tf.nn.relu(x)
-        y = tf.matmul(x, self.w2) + self.b2
+        x = tf.matmul(x, self.w2) + self.b2
+        y = tf.nn.softmax(x)
         return y
 
     def loss_function(self,logits,labels):
