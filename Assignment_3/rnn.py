@@ -1,14 +1,8 @@
-## Questions
-# 1. some of the sentences are shorter than 20 words, what should we do? Should we concatenate between the neighbors?
-# 2. It seems like we don't need to initiailize weights and biases.
-# 3. why do we need this dense layer? 
-# 4. why we comparing a probability with the index???? in the loss function
-# 5. why we need dump states out?
-
 import tensorflow as tf
 import numpy as np
 from preprocess import get_data
 
+tf.random.set_seed(12345)
 class Model(tf.keras.Model):
     def __init__(self, vocab_size):
         """
@@ -17,31 +11,23 @@ class Model(tf.keras.Model):
 
         :param vocab_size: The number of unique words in the data
         """
-
         super(Model, self).__init__()
 
         # TODO: initialize vocab_size, emnbedding_size
         self.vocab_size = vocab_size
         self.window_size = 20
-        self.embedding_size = 50
-        self.batch_size = 100
+        self.embedding_size = 100
+        self.batch_size = 128
 
         # TODO: initialize embeddings and forward pass weights (weights, biases)
         # Note: You can now use tf.keras.layers!
         # - use tf.keras.layers.Dense for feed forward layers: https://www.tensorflow.org/api_docs/python/tf/keras/layers/Dense
         # - and use tf.keras.layers.GRU or tf.keras.layers.LSTM for your RNN 
         
-        # self.w1 = tf.Variable(tf.random.truncated_normal([2*self.embedding_size, 2*self.embedding_size], stddev=0.1, dtype=tf.float32))
-        # self.b1 = tf.Variable(tf.random.truncated_normal([1, self.embedding_size], stddev=0.1, dtype=tf.float32))
         self.E = tf.Variable(tf.random.truncated_normal([self.vocab_size, self.embedding_size], stddev=0.1, dtype=tf.float32))
-
-        # self.rnn_1 = tf.keras.layers.LSTM(self.window_size, return_sequences=True, return_state=True)
-        self.gru_1 = tf.keras.layers.GRU(self.window_size, return_sequences=True, return_state=True)
-        # self.rnn_2 = tf.keras.layers.LSTM(self.window_size, return_sequences=True, return_state=True)
-        # self.dense = tf.keras.layers.Dense(self.vocab_size*self.window_size)
-        self.dense = tf.keras.layers.Dense(self.vocab_size)
-
-        self.optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
+        self.gru_1 = tf.keras.layers.GRU(200, return_sequences=True, return_state=True)
+        self.dense = tf.keras.layers.Dense(self.vocab_size, activation='softmax')
+        self.optimizer = tf.keras.optimizers.Adam(learning_rate=0.01)
 
     def call(self, inputs, initial_state):
         """
@@ -58,15 +44,9 @@ class Model(tf.keras.Model):
         -Note 2: You only need to use the initial state during generation. During training and testing it can be None.
         """
         x = tf.nn.embedding_lookup(self.E, inputs)
-        # y = self.rnn_1(x)
-        # y = self.rnn_2(x)
-        # l_out, l_s, l_c = y[0], y[1], y[2]
-
-        y = self.gru_1(x)
-        y_out, l_s = y[0], y[1]
-        logits = self.dense(y_out)
-        # print(logits.shape)
-        logits = tf.reshape(logits, [l_s.shape[0], self.window_size, self.vocab_size])
+        x = self.gru_1(x)
+        l_out, l_s = x[0], x[1]
+        logits = self.dense(l_out)
         return logits, l_s
 
     def loss(self, logits, labels):
@@ -80,7 +60,7 @@ class Model(tf.keras.Model):
         #We recommend using tf.keras.losses.sparse_categorical_crossentropy
         #https://www.tensorflow.org/api_docs/python/tf/keras/losses/sparse_categorical_crossentropy
 
-        loss = tf.reduce_mean(tf.keras.losses.sparse_categorical_crossentropy(labels, logits, from_logits=True))
+        loss = tf.reduce_mean(tf.keras.losses.sparse_categorical_crossentropy(labels, logits))
         return loss
 
 def train(model, train_inputs, train_labels):
@@ -93,7 +73,7 @@ def train(model, train_inputs, train_labels):
     :return: None
     """
     epochs = 1
-    batch_size = 100
+    batch_size = 128
     num_batch = int(np.ceil(len(train_inputs)/batch_size))
 
     for _ in range(0, epochs):
@@ -126,7 +106,6 @@ def test(model, test_inputs, test_labels):
     Note: perplexity is exp(total_loss/number of predictions)
 
     """
-    num_predictions = test_inputs.shape[0] # need to change
     batch_size, loss = 100, 0
     num_batch = int(np.ceil(len(test_inputs)/batch_size))
     for batch in range(0, num_batch):
@@ -141,10 +120,10 @@ def test(model, test_inputs, test_labels):
         logits, state = model.call(batch_input, None)
         loss += model.loss(logits, batch_label)
 
-    perplexity = np.exp(loss/num_predictions)
+    perplexity = np.exp(loss/num_batch)
     return perplexity
 
-def generate_sentence(word1, length, vocab,model):
+def generate_sentence(word1, length, vocab, model):
     """
     Takes a model, vocab, selects from the most likely next word from the model's distribution
 
@@ -154,7 +133,6 @@ def generate_sentence(word1, length, vocab,model):
     :param vocab: dictionary, word to id mapping
     :return: None
     """
-
     reverse_vocab = {idx:word for word, idx in vocab.items()}
     previous_state = None
 
@@ -185,45 +163,43 @@ def main():
     # TO-DO:  Separate your train and test data into inputs and labels
     window_size = 20
     ## train data
-    train_data_cont = np.concatenate(train_data_raw)
-    num_train = int(np.floor(len(train_data_cont)/window_size))
-    train_data = train_data_cont[0:window_size*num_train].reshape([num_train, window_size])
+    num_train = int(np.floor(len(train_data_raw)/window_size))
+    train_data = []
     train_labels = []
-    for i in range(0, num_train):
-        if i == num_train-1:
-            train_labels.append(np.append(train_data[i][1:], train_data_cont[num_train*window_size]))
-        else:
-            train_labels.append( np.append(train_data[i][1:], train_data[i+1][0]) )
-    train_labels = np.asarray(train_labels)
+    num_train = int(np.floor(len(train_data_raw)/window_size))
+    for i in range(num_train):
+        train_data.append(train_data_raw[i*window_size:(i+1)*window_size])
+        train_labels.append(train_data_raw[i*window_size+1:(i+1)*window_size+1])
+    train_input = np.asarray(train_data, dtype=int)
+    train_labels = np.asarray(train_labels, dtype=int)
 
     ## test data
-    test_data_cont = np.concatenate(test_data_raw)
-    num_test = int(np.floor(len(test_data_cont)/window_size))
-    test_data = test_data_cont[0:window_size*num_test].reshape([num_test, window_size])
+    num_test = int(np.floor(len(test_data_raw)/window_size))
+    test_data = []
     test_labels = []
-    for i in range(0, num_test):
-        if i == num_test-1:
-            test_labels.append(np.append(test_data[i][1:], test_data_cont[num_test*window_size]))
-        else:
-            test_labels.append( np.append(test_data[i][1:], test_data[i+1][0]) )
-    test_labels = np.asarray(test_labels)
+    num_test = int(np.floor(len(test_data_raw)/window_size))
+    for i in range(num_test-1):
+        test_data.append(test_data_raw[i*window_size:(i+1)*window_size])
+        test_labels.append(test_data_raw[i*window_size+1:(i+1)*window_size+1])
 
-    # train_data = [sentence[:-1] for sentence in train_data_raw]
-    # train_labels = [sentence[1:] for sentence in train_data_raw]
-    # test_data = [sentence[:-1] for sentence in test_data_raw]
-    # test_labels = [sentence[1:] for sentence in test_data_raw]
+    test_input = np.asarray(test_data, dtype=int)
+    test_labels = np.asarray(test_labels, dtype=int)
 
     # TODO: initialize model and tensorflow variables
     model = Model(vocab_size)
 
     # TODO: Set-up the training step
-    train(model, train_data, train_labels)
+    train(model, train_input, train_labels)
 
     # TODO: Set up the testing steps
-    perplexity = test(model, test_data, test_labels)
+    perplexity = test(model, test_input, test_labels)
 
     # Print out perplexity 
     print(f'perplexity: {perplexity}')
+
+    # try generate_sentence
+    generate_sentence('this', 20, dict_vocab, model)
+
 
 if __name__ == '__main__':
     main()
