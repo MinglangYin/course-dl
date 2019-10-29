@@ -7,7 +7,6 @@ from transformer_model import Transformer_Seq2Seq
 from rnn_model import RNN_Seq2Seq
 import sys
 
-
 def train(model, train_french, train_english, eng_padding_index):
 	"""
 	Runs through one epoch - all training examples.
@@ -26,8 +25,22 @@ def train(model, train_french, train_english, eng_padding_index):
 	# 
 	# - When computing loss, the decoder labels should have the first word removed:
 	#	 [STOP CS147 is the best class. STOP] --> [CS147 is the best class. STOP] 
-
-	pass
+	bsz = model.batch_size
+	n_batch = round(len(train_french)/bsz)
+	for i in range(n_batch):
+		if i == n_batch-1:
+			frch_batch = train_french[i*bsz:-1,:]
+			eng_batch = train_english[i*bsz:-1,:]
+		else:
+			frch_batch = train_french[i*bsz:(i+1)*bsz, :]
+			eng_batch = train_english[i*bsz:(i+1)*bsz, :]
+		with tf.GradientTape() as tape:
+			prbs = model.call(frch_batch, eng_batch)
+			loss = model.loss(prbs, eng_batch, mask)
+			print(f'loss: {loss}')
+		
+		gradients = tape.gradient(loss, model.trainable_variables)
+		model.optimizer.apply_gradients(zip(gradients, model.trainable_variables))	
 
 def test(model, test_french, test_english, eng_padding_index):
 	"""
@@ -41,8 +54,23 @@ def test(model, test_french, test_english, eng_padding_index):
 	"""
 
 	# Note: Follow the same procedure as in train() to construct batches of data!
-	
-	return None,None
+	bsz, loss = model.batch_size, 0
+	n_batch = int(np.ceil(len(test_english)/bsz))
+	for i in range(n_batch):
+		if i == n_batch-1:
+			frch_batch = test_french[i*bsz:-1,:]
+			eng_batch = test_english[i*bsz:-1,:]
+		else:
+			frch_batch = test_french[i*bsz:(i+1)*bsz, :]
+			eng_batch = test_english[i*bsz:(i+1)*bsz, :]
+
+		prbs = model.call(frch_batch, eng_batch)
+		loss += model.loss(prbs, eng_batch, mask)
+		print(f'loss: {loss}')
+		
+	perplexity = np.exp(loss/n_batch)
+	accu_persym = 1 ############
+	return perplexity, accu_persym
 
 def main():	
 	if len(sys.argv) != 2 or sys.argv[1] not in {"RNN","TRANSFORMER"}:
@@ -60,9 +88,14 @@ def main():
 	elif sys.argv[1] == "TRANSFORMER":
 		model = Transformer_Seq2Seq(*model_args) 
 	
-	
 	# TODO:
 	# Train and Test Model for 1 epoch.
+	epochs = 1
+	for _ in range(epochs):
+		train(model, train_french, train_english, eng_padding_index)
+
+	perplexity, accu_persym = test(model, test_french, test_english, eng_padding_index)
+	print(f'perplexity: {perplexity}, accuracy_per_symbol: {accu_persym}')
 
 if __name__ == '__main__':
    main()
