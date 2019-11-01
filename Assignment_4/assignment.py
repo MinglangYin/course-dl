@@ -38,14 +38,10 @@ def train(model, train_french, train_english, eng_padding_index):
 			frch_batch = train_french[i*bsz:(i+1)*bsz]
 			eng_batch = train_english[i*bsz:(i+1)*bsz]
 
-		mask = eng_batch == eng_padding_index
-		print(mask)
-		boolean_mask = tf.boolean_mask(eng_batch, mask)
-		print(boolean_mask)
-
+		mask = eng_batch[:,:-1] != eng_padding_index
 		with tf.GradientTape() as tape:
 			prbs = model.call(frch_batch, eng_batch[:,1:])
-			loss = model.loss_function(prbs, eng_batch[:,:-1], boolean_mask)
+			loss = model.loss_function(prbs, eng_batch[:,:-1], mask)
 			print(f'loss: {loss}')
 		
 		gradients = tape.gradient(loss, model.trainable_variables)
@@ -73,12 +69,13 @@ def test(model, test_french, test_english, eng_padding_index):
 			frch_batch = test_french[i*bsz:(i+1)*bsz, :]
 			eng_batch = test_english[i*bsz:(i+1)*bsz, :]
 
-		prbs = model.call(frch_batch, eng_batch)
-		loss += model.loss(prbs, eng_batch, 1)
+		mask = eng_batch[:,:-1] != eng_padding_index
+		prbs = model.call(frch_batch, eng_batch[:,1:])
+		loss += model.loss(prbs, eng_batch[:,:-1], mask)
 		print(f'loss: {loss}')
 		
 	perplexity = np.exp(loss/n_batch)
-	accu_persym = 1 ############
+	accu_persym = model.accuracy_function(prbs, eng_batch[:,:-1], mask)
 	return perplexity, accu_persym
 
 def main():	

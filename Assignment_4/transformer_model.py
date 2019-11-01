@@ -14,26 +14,35 @@ class Transformer_Seq2Seq(tf.keras.Model):
 		self.french_window_size = french_window_size # The french window size
 		self.english_window_size = english_window_size # The english window size
 		######^^^ DO NOT CHANGE ^^^##################
-
-
 		# TODO:
 		# 1) Define any hyperparameters
 		# 2) Define embeddings, encoder, decoder, and feed forward layers
 
 		# Define batch size and optimizer/learning rate
 		self.batch_size = 100
-		self.embedding_size = None
+		self.embedding_size = 50
+		self.optimizer = tf.keras.optimizers.Adam(learning_rate=0.01)
 
 		# Define english and french embedding layers:
-		
+		self.E_e = tf.Variable(tf.random.truncated_normal([self.english_vocab_size, self.embedding_size], mean=0.0, stddev=0.1, dtype=tf.float32))
+		self.E_f = tf.Variable(tf.random.truncated_normal([self.french_vocab_size, self.embedding_size], mean=0.0, stddev=0.1, dtype=tf.float32))
+
 		# Create positional encoder layers
+		self.pos_e = transformer.Position_Encoding_Layer(self.english_window_size, self.embedding_size)
+		self.pos_f = transformer.Position_Encoding_Layer(self.french_window_size, self.embedding_size)
 
 		# Define encoder and decoder layers:
-	
+		if 0:
+			self.encoder = transformer.Transformer_Block(self.embedding_size, is_decoder=False, multi_headed=False)
+			self.decoder = transformer.Transformer_Block(self.embedding_size, is_decoder=True, multi_headed=False)
+		else:
+			self.encoder = transformer.Transformer_Block(self.embedding_size, is_decoder=False, multi_headed=True)
+			self.decoder = transformer.Transformer_Block(self.embedding_size, is_decoder=True, multi_headed=True)
+
 		# Define dense layer(s)
-
-
-	@tf.function
+		self.dense = tf.keras.layers.Dense(self.english_vocab_size, activation='softmax')
+		
+	# @tf.function
 	def call(self, encoder_input, decoder_input):
 		"""
 		:param encoder_input: batched ids corresponding to french sentences
@@ -43,12 +52,22 @@ class Transformer_Seq2Seq(tf.keras.Model):
 	
 		# TODO:
 		#1) Add the positional embeddings to french sentence embeddings
+		x_f = tf.nn.embedding_lookup(self.E_f, encoder_input)
+		x_f = self.pos_e(x_f)
+
 		#2) Pass the french sentence embeddings to the encoder
+		encoder_out = self.encoder(x_f)
+		
 		#3) Add positional embeddings to the english sentence embeddings
+		x_e = tf.nn.embedding_lookup(self.E_e, decoder_input)
+		x_e = self.pos_f(x_e)
+
 		#4) Pass the english embeddings and output of your encoder, to the decoder
+		decoder_out =self.decoder(x_e, context=encoder_out)
+
 		#3) Apply dense layer(s) to the decoder out to generate probabilities
-	
-		return None
+		prbs = self.dense(decoder_out)
+		return prbs
 
 	def accuracy_function(self, prbs, labels, mask):
 		"""
@@ -76,8 +95,7 @@ class Transformer_Seq2Seq(tf.keras.Model):
 		:param mask:  tensor that acts as a padding mask [batch_size x window_size]
 		:return: the loss of the model as a tensor
 		"""
-
-		# Note: you can reuse this from rnn_model.
-
-		return None		
+		loss = tf.keras.losses.sparse_categorical_crossentropy(labels, prbs)
+		loss = tf.reduce_mean(tf.boolean_mask(loss, mask))
+		return loss		
 
