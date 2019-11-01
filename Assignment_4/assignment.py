@@ -25,18 +25,27 @@ def train(model, train_french, train_english, eng_padding_index):
 	# 
 	# - When computing loss, the decoder labels should have the first word removed:
 	#	 [STOP CS147 is the best class. STOP] --> [CS147 is the best class. STOP] 
+
+	# TO-DO:  Separate your train and test data into inputs and labels
+
 	bsz = model.batch_size
 	n_batch = round(len(train_french)/bsz)
 	for i in range(n_batch):
 		if i == n_batch-1:
-			frch_batch = train_french[i*bsz:-1,:]
-			eng_batch = train_english[i*bsz:-1,:]
+			frch_batch = train_french[i*bsz:-1]
+			eng_batch = train_english[i*bsz:-1]
 		else:
-			frch_batch = train_french[i*bsz:(i+1)*bsz, :]
-			eng_batch = train_english[i*bsz:(i+1)*bsz, :]
+			frch_batch = train_french[i*bsz:(i+1)*bsz]
+			eng_batch = train_english[i*bsz:(i+1)*bsz]
+
+		mask = eng_batch == eng_padding_index
+		print(mask)
+		boolean_mask = tf.boolean_mask(eng_batch, mask)
+		print(boolean_mask)
+
 		with tf.GradientTape() as tape:
-			prbs = model.call(frch_batch, eng_batch)
-			loss = model.loss(prbs, eng_batch, mask)
+			prbs = model.call(frch_batch, eng_batch[:,1:])
+			loss = model.loss_function(prbs, eng_batch[:,:-1], boolean_mask)
 			print(f'loss: {loss}')
 		
 		gradients = tape.gradient(loss, model.trainable_variables)
@@ -65,7 +74,7 @@ def test(model, test_french, test_english, eng_padding_index):
 			eng_batch = test_english[i*bsz:(i+1)*bsz, :]
 
 		prbs = model.call(frch_batch, eng_batch)
-		loss += model.loss(prbs, eng_batch, mask)
+		loss += model.loss(prbs, eng_batch, 1)
 		print(f'loss: {loss}')
 		
 	perplexity = np.exp(loss/n_batch)
