@@ -39,9 +39,7 @@ def train(model, train_french, train_english, eng_padding_index):
 			eng_batch = train_english[i*bsz:(i+1)*bsz]
 
 		mask = eng_batch == eng_padding_index
-		print(mask)
 		boolean_mask = tf.boolean_mask(eng_batch, mask)
-		print(boolean_mask)
 
 		with tf.GradientTape() as tape:
 			prbs = model.call(frch_batch, eng_batch[:,1:])
