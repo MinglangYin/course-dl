@@ -24,7 +24,6 @@ def Self_Attention(K, V, Q, use_mask=False):
 	# 1) compute attention weights using queries and key matrices (if use_mask==True, then make sure to add the attention mask before softmax)
 	# 2) build new embeddings by applying the attention weights to the values matrices
 
-
 	# Check lecture slides for how to compute self-attention
 	# Remember: 
 	# - Q is [batch_size x window_size_queries x embedding_size]
@@ -32,13 +31,15 @@ def Self_Attention(K, V, Q, use_mask=False):
 	# - K is [batch_size x window_size_keys x embedding_size]
 	# - Mask is [batch_size x window_size_queries x window_size_keys]
 
-
 	# Here, queries are matmuled with the transpose of keys to produce for every query vector, weights per key vector. 
 	# This can be thought of as: for every query word, how much should I pay attention to the other words in this window?
 	# Those weights are then used to create linear combinations of the corresponding values for each query.
 	# Those queries will become the new embeddings.
 
-	return None
+	dk = K.shape[1] ##???
+	tmp = tf.nn.softmax(tf.matmul(Q, tf.transpose(K, [0,2,1]))/np.sqrt(dk))
+	attention = tf.matmul(tmp, V)
+	return attention
 
 
 class Atten_Head(tf.keras.layers.Layer):
@@ -51,6 +52,11 @@ class Atten_Head(tf.keras.layers.Layer):
 		# Initialize the weight matrices for K, V, and Q.
 		# They should be able to multiply an input_size vector to produce an output_size vector 
 		# Hint: use self.add_weight(...)
+		
+		##?????
+		self.K = tf.Variable(tf.random.truncated_normal([input_size, output_size], mean=0.0, stddev=0.1, dtype=tf.float32))
+		self.V = tf.Variable(tf.random.truncated_normal([input_size, output_size], mean=0.0, stddev=0.1, dtype=tf.float32))
+		self.Q = tf.Variable(tf.random.truncated_normal([input_size, output_size], mean=0.0, stddev=0.1, dtype=tf.float32))
 
 	def call(self, inputs_for_keys, inputs_for_values, inputs_for_queries):
 
@@ -68,21 +74,31 @@ class Atten_Head(tf.keras.layers.Layer):
 		# TODO:
 		# - Apply 3 matrices to turn inputs into keys, values, and queries. You will need to use tf.tensordot for this. 
 		# - Call self_attention with the keys, values, and queries, and with self.use_mask.
-
-		K = None
-		V = None
-		Q = None
-
-		return None
-
-
+		print(f'Run Single_head!')
+		K = tf.matmul(inputs_for_keys, self.K)
+		V = tf.matmul(inputs_for_values, self.V)
+		Q = tf.matmul(inputs_for_queries, self.Q)
+		out = Self_Attention(K, V, Q, use_mask=False)
+		return out
 
 class Multi_Headed(tf.keras.layers.Layer):
 	def __init__(self, emb_sz, use_mask):
-		super(Three_Headed_Attention, self).__init__()
+		super(Multi_Headed, self).__init__()
 		
 		# TODO:
 		# Initialize heads
+		self.use_mask = use_mask
+		self.K1 = tf.Variable(tf.random.truncated_normal([emb_sz, emb_sz], mean=0.0, stddev=0.1, dtype=tf.float32))
+		self.V1 = tf.Variable(tf.random.truncated_normal([emb_sz, emb_sz], mean=0.0, stddev=0.1, dtype=tf.float32))
+		self.Q1 = tf.Variable(tf.random.truncated_normal([emb_sz, emb_sz], mean=0.0, stddev=0.1, dtype=tf.float32))
+		self.K2 = tf.Variable(tf.random.truncated_normal([emb_sz, emb_sz], mean=0.0, stddev=0.1, dtype=tf.float32))
+		self.V2 = tf.Variable(tf.random.truncated_normal([emb_sz, emb_sz], mean=0.0, stddev=0.1, dtype=tf.float32))
+		self.Q2 = tf.Variable(tf.random.truncated_normal([emb_sz, emb_sz], mean=0.0, stddev=0.1, dtype=tf.float32))
+		self.K3 = tf.Variable(tf.random.truncated_normal([emb_sz, emb_sz], mean=0.0, stddev=0.1, dtype=tf.float32))
+		self.V3 = tf.Variable(tf.random.truncated_normal([emb_sz, emb_sz], mean=0.0, stddev=0.1, dtype=tf.float32))
+		self.Q3 = tf.Variable(tf.random.truncated_normal([emb_sz, emb_sz], mean=0.0, stddev=0.1, dtype=tf.float32))
+
+		self.W = tf.Variable(tf.random.truncated_normal([3*emb_sz, emb_sz], mean=0.0, stddev=0.1, dtype=tf.float32))
 
 	@tf.function
 	def call(self, inputs_for_keys, inputs_for_values, inputs_for_queries):
@@ -102,9 +118,25 @@ class Multi_Headed(tf.keras.layers.Layer):
 		:param inputs_for_queries: tensor of [batch_size x [ENG/FRN]_WINDOW_SIZE x input_size ]
 		:return: tensor of [BATCH_SIZE x (ENG/FRN)_WINDOW_SIZE x output_size ]
 		"""
+		print(f'Run multi_head!')
+		K1 = tf.matmul(inputs_for_keys, self.K1)
+		V1 = tf.matmul(inputs_for_values, self.V1)
+		Q1 = tf.matmul(inputs_for_queries, self.Q1)
+		Z1 = Self_Attention(K1, V1, Q1, use_mask=False)
+		
+		K2 = tf.matmul(inputs_for_keys, self.K2)
+		V2 = tf.matmul(inputs_for_values, self.V2)
+		Q2 = tf.matmul(inputs_for_queries, self.Q2)
+		Z2 = Self_Attention(K2, V2, Q2, use_mask=False)
 
-		return None
+		K3 = tf.matmul(inputs_for_keys, self.K3)
+		V3 = tf.matmul(inputs_for_values, self.V3)
+		Q3 = tf.matmul(inputs_for_queries, self.Q3)
+		Z3 = Self_Attention(K3, V3, Q3, use_mask=False)
 
+		Z = tf.concat([Z1, Z2, Z3], axis = 2)
+		out = tf.matmul(Z, self.W)
+		return out
 
 class Feed_Forwards(tf.keras.layers.Layer):
 	def __init__(self, emb_sz):
@@ -134,10 +166,10 @@ class Transformer_Block(tf.keras.layers.Layer):
 		super(Transformer_Block, self).__init__()
 
 		self.ff_layer = Feed_Forwards(emb_sz)
-		self.self_atten = Atten_Head(emb_sz,emb_sz,use_mask=is_decoder) if not multi_headed else Multi_Headed_Attention(emb_sz,use_mask=is_decoder)
+		self.self_atten = Atten_Head(emb_sz,emb_sz,use_mask=is_decoder) if not multi_headed else Multi_Headed(emb_sz,use_mask=is_decoder)
 		self.is_decoder = is_decoder
 		if self.is_decoder:
-			self.self_context_atten = Atten_Head(emb_sz,emb_sz,use_mask=False) if not multi_headed else Multi_Headed_Attention(emb_sz,use_mask=False)
+			self.self_context_atten = Atten_Head(emb_sz,emb_sz,use_mask=False) if not multi_headed else Multi_Headed(emb_sz,use_mask=False)
 
 		self.layer_norm = tf.keras.layers.LayerNormalization(axis=-1)
 
