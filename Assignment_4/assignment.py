@@ -32,18 +32,20 @@ def train(model, train_french, train_english, eng_padding_index):
 	n_batch = round(len(train_french)/bsz)
 	for i in range(n_batch):
 		if i == n_batch-1:
-			frch_batch = train_french[i*bsz:-1]
-			eng_batch = train_english[i*bsz:-1]
+			frch_batch = train_french[i*bsz:]
+			eng_batch = train_english[i*bsz:]
 		else:
 			frch_batch = train_french[i*bsz:(i+1)*bsz]
 			eng_batch = train_english[i*bsz:(i+1)*bsz]
 
-		mask = eng_batch == eng_padding_index
-		boolean_mask = tf.boolean_mask(eng_batch, mask)
+		encoder_input = frch_batch
+		decoder_input = eng_batch[:,:-1]
+		labels = eng_batch[:,1:]
+		mask = labels != eng_padding_index
 
 		with tf.GradientTape() as tape:
-			prbs = model.call(frch_batch, eng_batch[:,1:])
-			loss = model.loss_function(prbs, eng_batch[:,:-1], mask)
+			prbs = model.call(encoder_input, decoder_input)
+			loss = model.loss_function(prbs, labels, mask)
 			print(f'loss: {loss}')
 		
 		gradients = tape.gradient(loss, model.trainable_variables)
@@ -61,24 +63,30 @@ def test(model, test_french, test_english, eng_padding_index):
 	"""
 
 	# Note: Follow the same procedure as in train() to construct batches of data!
-	bsz, loss = model.batch_size, 0
+	bsz, loss, accuracy = model.batch_size, 0, 0
 	n_batch = int(np.ceil(len(test_english)/bsz))
 	for i in range(n_batch):
 		if i == n_batch-1:
-			frch_batch = test_french[i*bsz:-1,:]
-			eng_batch = test_english[i*bsz:-1,:]
+			frch_batch = test_french[i*bsz:]
+			eng_batch = test_english[i*bsz:]
 		else:
-			frch_batch = test_french[i*bsz:(i+1)*bsz, :]
-			eng_batch = test_english[i*bsz:(i+1)*bsz, :]
+			frch_batch = test_french[i*bsz:(i+1)*bsz]
+			eng_batch = test_english[i*bsz:(i+1)*bsz]
 
-		mask = eng_batch[:,:-1] != eng_padding_index
-		prbs = model.call(frch_batch, eng_batch[:,1:])
-		loss += model.loss(prbs, eng_batch[:,:-1], mask)
-		print(f'loss: {loss}')
+		encoder_input = frch_batch
+		decoder_input = eng_batch[:,:-1]
+		labels = eng_batch[:,1:]
+		mask = labels != eng_padding_index
+
+		prbs = model.call(encoder_input, decoder_input)
+		loss += model.loss_function(prbs, labels, mask)
+
+		accuracy = model.accuracy_function(prbs, labels, mask)
+		print(f'loss: {loss}, accuracy: {accuracy}')
 		
 	perplexity = np.exp(loss/n_batch)
-	accu_persym = model.accuracy_function(prbs, eng_batch[:,:-1], mask)
-	return perplexity, accu_persym
+	
+	return perplexity, accuracy
 
 def main():	
 	if len(sys.argv) != 2 or sys.argv[1] not in {"RNN","TRANSFORMER"}:
@@ -87,7 +95,7 @@ def main():
 			exit()
 
 	print("Running preprocessing...")
-	train_english,test_english, train_french,test_french, english_vocab,french_vocab,eng_padding_index = get_data('data/fls.txt','data/els.txt','data/flt.txt','data/elt.txt')
+	train_english, test_english, train_french, test_french, english_vocab, french_vocab,eng_padding_index = get_data('data/fls.txt','data/els.txt','data/flt.txt','data/elt.txt')
 	print("Preprocessing complete.")
 
 	model_args = (FRENCH_WINDOW_SIZE,len(french_vocab),ENGLISH_WINDOW_SIZE, len(english_vocab))

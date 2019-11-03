@@ -54,9 +54,9 @@ class Atten_Head(tf.keras.layers.Layer):
 		# Hint: use self.add_weight(...)
 		
 		##?????
-		self.K = tf.Variable(tf.random.truncated_normal([input_size, output_size], mean=0.0, stddev=0.1, dtype=tf.float32))
-		self.V = tf.Variable(tf.random.truncated_normal([input_size, output_size], mean=0.0, stddev=0.1, dtype=tf.float32))
-		self.Q = tf.Variable(tf.random.truncated_normal([input_size, output_size], mean=0.0, stddev=0.1, dtype=tf.float32))
+		self.w_K = tf.Variable(tf.random.truncated_normal([input_size, output_size], mean=0.0, stddev=0.1, dtype=tf.float32))
+		self.w_V = tf.Variable(tf.random.truncated_normal([input_size, output_size], mean=0.0, stddev=0.1, dtype=tf.float32))
+		self.w_Q = tf.Variable(tf.random.truncated_normal([input_size, output_size], mean=0.0, stddev=0.1, dtype=tf.float32))
 
 	def call(self, inputs_for_keys, inputs_for_values, inputs_for_queries):
 
@@ -75,9 +75,9 @@ class Atten_Head(tf.keras.layers.Layer):
 		# - Apply 3 matrices to turn inputs into keys, values, and queries. You will need to use tf.tensordot for this. 
 		# - Call self_attention with the keys, values, and queries, and with self.use_mask.
 		print(f'Run Single_head!')
-		K = tf.matmul(inputs_for_keys, self.K)
-		V = tf.matmul(inputs_for_values, self.V)
-		Q = tf.matmul(inputs_for_queries, self.Q)
+		K = tf.tensordot(inputs_for_keys, self.w_K, axes=[2,0])
+		V = tf.tensordot(inputs_for_values, self.w_V, axes=[2,0])
+		Q = tf.tensordot(inputs_for_queries, self.w_Q, axes=[2,0])
 		out = Self_Attention(K, V, Q, use_mask=False)
 		return out
 
@@ -88,15 +88,15 @@ class Multi_Headed(tf.keras.layers.Layer):
 		# TODO:
 		# Initialize heads
 		self.use_mask = use_mask
-		self.K1 = tf.Variable(tf.random.truncated_normal([emb_sz, emb_sz], mean=0.0, stddev=0.1, dtype=tf.float32))
-		self.V1 = tf.Variable(tf.random.truncated_normal([emb_sz, emb_sz], mean=0.0, stddev=0.1, dtype=tf.float32))
-		self.Q1 = tf.Variable(tf.random.truncated_normal([emb_sz, emb_sz], mean=0.0, stddev=0.1, dtype=tf.float32))
-		self.K2 = tf.Variable(tf.random.truncated_normal([emb_sz, emb_sz], mean=0.0, stddev=0.1, dtype=tf.float32))
-		self.V2 = tf.Variable(tf.random.truncated_normal([emb_sz, emb_sz], mean=0.0, stddev=0.1, dtype=tf.float32))
-		self.Q2 = tf.Variable(tf.random.truncated_normal([emb_sz, emb_sz], mean=0.0, stddev=0.1, dtype=tf.float32))
-		self.K3 = tf.Variable(tf.random.truncated_normal([emb_sz, emb_sz], mean=0.0, stddev=0.1, dtype=tf.float32))
-		self.V3 = tf.Variable(tf.random.truncated_normal([emb_sz, emb_sz], mean=0.0, stddev=0.1, dtype=tf.float32))
-		self.Q3 = tf.Variable(tf.random.truncated_normal([emb_sz, emb_sz], mean=0.0, stddev=0.1, dtype=tf.float32))
+		self.w_K1 = tf.Variable(tf.random.truncated_normal([emb_sz, emb_sz], mean=0.0, stddev=0.1, dtype=tf.float32))
+		self.w_V1 = tf.Variable(tf.random.truncated_normal([emb_sz, emb_sz], mean=0.0, stddev=0.1, dtype=tf.float32))
+		self.w_Q1 = tf.Variable(tf.random.truncated_normal([emb_sz, emb_sz], mean=0.0, stddev=0.1, dtype=tf.float32))
+		self.w_K2 = tf.Variable(tf.random.truncated_normal([emb_sz, emb_sz], mean=0.0, stddev=0.1, dtype=tf.float32))
+		self.w_V2 = tf.Variable(tf.random.truncated_normal([emb_sz, emb_sz], mean=0.0, stddev=0.1, dtype=tf.float32))
+		self.w_Q2 = tf.Variable(tf.random.truncated_normal([emb_sz, emb_sz], mean=0.0, stddev=0.1, dtype=tf.float32))
+		self.w_K3 = tf.Variable(tf.random.truncated_normal([emb_sz, emb_sz], mean=0.0, stddev=0.1, dtype=tf.float32))
+		self.w_V3 = tf.Variable(tf.random.truncated_normal([emb_sz, emb_sz], mean=0.0, stddev=0.1, dtype=tf.float32))
+		self.w_Q3 = tf.Variable(tf.random.truncated_normal([emb_sz, emb_sz], mean=0.0, stddev=0.1, dtype=tf.float32))
 
 		self.W = tf.Variable(tf.random.truncated_normal([3*emb_sz, emb_sz], mean=0.0, stddev=0.1, dtype=tf.float32))
 
@@ -119,19 +119,19 @@ class Multi_Headed(tf.keras.layers.Layer):
 		:return: tensor of [BATCH_SIZE x (ENG/FRN)_WINDOW_SIZE x output_size ]
 		"""
 		print(f'Run multi_head!')
-		K1 = tf.matmul(inputs_for_keys, self.K1)
-		V1 = tf.matmul(inputs_for_values, self.V1)
-		Q1 = tf.matmul(inputs_for_queries, self.Q1)
+		K1 = tf.tensordot(inputs_for_keys, self.w_K1, axes=[2,0])
+		V1 = tf.tensordot(inputs_for_values, self.w_V1, axes=[2,0])
+		Q1 = tf.tensordot(inputs_for_queries, self.w_Q1, axes=[2,0])
 		Z1 = Self_Attention(K1, V1, Q1, use_mask=False)
 		
-		K2 = tf.matmul(inputs_for_keys, self.K2)
-		V2 = tf.matmul(inputs_for_values, self.V2)
-		Q2 = tf.matmul(inputs_for_queries, self.Q2)
+		K2 = tf.tensordot(inputs_for_keys, self.w_K2, axes=[2,0])
+		V2 = tf.tensordot(inputs_for_values, self.w_V2, axes=[2,0])
+		Q2 = tf.tensordot(inputs_for_queries, self.w_Q2, axes=[2,0])
 		Z2 = Self_Attention(K2, V2, Q2, use_mask=False)
 
-		K3 = tf.matmul(inputs_for_keys, self.K3)
-		V3 = tf.matmul(inputs_for_values, self.V3)
-		Q3 = tf.matmul(inputs_for_queries, self.Q3)
+		K3 = tf.tensordot(inputs_for_keys, self.w_K3, axes=[2,0])
+		V3 = tf.tensordot(inputs_for_values, self.w_V3, axes=[2,0])
+		Q3 = tf.tensordot(inputs_for_queries, self.w_Q3, axes=[2,0])
 		Z3 = Self_Attention(K3, V3, Q3, use_mask=False)
 
 		Z = tf.concat([Z1, Z2, Z3], axis = 2)

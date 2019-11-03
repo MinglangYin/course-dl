@@ -15,12 +15,10 @@ class RNN_Seq2Seq(tf.keras.Model):
 
 		# TODO:
 		# 1) Define any hyperparameters
-		# self.w1 = tf.Variable(tf.random.truncated_normal([200, 200], mean=0.0, stddev=0.1, dtype=tf.float32))
-		# self.b1 = tf.Variable(tf.random.truncated_normal([1, 200], mean=0.0, stddev=0.1, dtype=tf.float32))
 
 		# Define batch size and optimizer/learning rate
 		self.batch_size = 100 # You can change this
-		self.embedding_size = 50 # You should change this
+		self.embedding_size = 60 # You should change this
 		self.optimizer = tf.keras.optimizers.Adam(learning_rate=0.01)
 
 		# 2) Define embeddings, encoder, decoder, and feed forward layers
