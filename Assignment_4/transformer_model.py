@@ -21,7 +21,7 @@ class Transformer_Seq2Seq(tf.keras.Model):
 		# Define batch size and optimizer/learning rate
 		self.batch_size = 100
 		self.embedding_size = 50
-		self.optimizer = tf.keras.optimizers.Adam(learning_rate=0.01)
+		self.optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
 
 		# Define english and french embedding layers:
 		self.E_e = tf.Variable(tf.random.truncated_normal([self.english_vocab_size, self.embedding_size], mean=0.0, stddev=0.1, dtype=tf.float32))

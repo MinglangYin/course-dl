@@ -2,7 +2,6 @@ import numpy as np
 import tensorflow as tf
 import numpy as np
 
-
 def Self_Attention(K, V, Q, use_mask=False):
 	"""
 	STUDENT MUST WRITE:
@@ -78,7 +77,7 @@ class Atten_Head(tf.keras.layers.Layer):
 		K = tf.tensordot(inputs_for_keys, self.w_K, axes=[2,0])
 		V = tf.tensordot(inputs_for_values, self.w_V, axes=[2,0])
 		Q = tf.tensordot(inputs_for_queries, self.w_Q, axes=[2,0])
-		out = Self_Attention(K, V, Q, use_mask=False)
+		out = Self_Attention(K, V, Q, use_mask=self.use_mask)
 		return out
 
 class Multi_Headed(tf.keras.layers.Layer):
@@ -122,17 +121,17 @@ class Multi_Headed(tf.keras.layers.Layer):
 		K1 = tf.tensordot(inputs_for_keys, self.w_K1, axes=[2,0])
 		V1 = tf.tensordot(inputs_for_values, self.w_V1, axes=[2,0])
 		Q1 = tf.tensordot(inputs_for_queries, self.w_Q1, axes=[2,0])
-		Z1 = Self_Attention(K1, V1, Q1, use_mask=False)
+		Z1 = Self_Attention(K1, V1, Q1, self.use_mask)
 		
 		K2 = tf.tensordot(inputs_for_keys, self.w_K2, axes=[2,0])
 		V2 = tf.tensordot(inputs_for_values, self.w_V2, axes=[2,0])
 		Q2 = tf.tensordot(inputs_for_queries, self.w_Q2, axes=[2,0])
-		Z2 = Self_Attention(K2, V2, Q2, use_mask=False)
+		Z2 = Self_Attention(K2, V2, Q2, self.use_mask)
 
 		K3 = tf.tensordot(inputs_for_keys, self.w_K3, axes=[2,0])
 		V3 = tf.tensordot(inputs_for_values, self.w_V3, axes=[2,0])
 		Q3 = tf.tensordot(inputs_for_queries, self.w_Q3, axes=[2,0])
-		Z3 = Self_Attention(K3, V3, Q3, use_mask=False)
+		Z3 = Self_Attention(K3, V3, Q3, self.use_mask)
 
 		Z = tf.concat([Z1, Z2, Z3], axis = 2)
 		out = tf.matmul(Z, self.W)
