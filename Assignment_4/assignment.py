@@ -6,6 +6,7 @@ from preprocess import *
 from transformer_model import Transformer_Seq2Seq
 from rnn_model import RNN_Seq2Seq
 import sys
+import time
 
 def train(model, train_french, train_english, eng_padding_index):
 	"""
@@ -43,9 +44,12 @@ def train(model, train_french, train_english, eng_padding_index):
 		labels = eng_batch[:,1:]
 		mask = labels != eng_padding_index
 
+		print(sum(mask))
+
 		with tf.GradientTape() as tape:
 			prbs = model.call(encoder_input, decoder_input)
 			loss = model.loss_function(prbs, labels, mask)
+			# mean_loss = tf.reduce_mean(loss)
 			print(f'loss: {loss}')
 		
 		gradients = tape.gradient(loss, model.trainable_variables)
@@ -88,6 +92,7 @@ def test(model, test_french, test_english, eng_padding_index):
 	
 	return perplexity, accuracy
 
+
 def main():	
 	if len(sys.argv) != 2 or sys.argv[1] not in {"RNN","TRANSFORMER"}:
 			print("USAGE: python assignment.py <Model Type>")
@@ -107,8 +112,11 @@ def main():
 	# TODO:
 	# Train and Test Model for 1 epoch.
 	epochs = 1
+	start_time = time.time()
 	for _ in range(epochs):
 		train(model, train_french, train_english, eng_padding_index)
+	end_time = time.time()
+	print(f'training time: {end_time-start_time}')
 
 	perplexity, accu_persym = test(model, test_french, test_english, eng_padding_index)
 	print(f'perplexity: {perplexity}, accuracy_per_symbol: {accu_persym}')
