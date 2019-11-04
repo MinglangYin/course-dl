@@ -15,7 +15,6 @@ class RNN_Seq2Seq(tf.keras.Model):
 
 		# TODO:
 		# 1) Define any hyperparameters
-
 		# Define batch size and optimizer/learning rate
 		self.batch_size = 100 # You can change this
 		self.embedding_size = 50 # You should change this
@@ -43,7 +42,7 @@ class RNN_Seq2Seq(tf.keras.Model):
 
 		#2) Pass your english sentence embeddings, and final state of your encoder, to your decoder
 		x_e = tf.nn.embedding_lookup(self.E_e, decoder_input)
-		decoder_out = self.decoder(x_e, initial_state=encoder_state)[0]
+		decoder_out = self.decoder(x_e, initial_state=encoder_state)
 
 		#3) Apply dense layer(s) to the decoder out to generate probabilities
 		prob = self.dense(decoder_out)
@@ -60,11 +59,9 @@ class RNN_Seq2Seq(tf.keras.Model):
 		:param mask:  tensor that acts as a padding mask [batch_size x window_size]
 		:return: scalar tensor of accuracy of the batch between 0 and 1
 		"""
-
 		decoded_symbols = tf.argmax(input=prbs, axis=2)
 		accuracy = tf.reduce_mean(tf.boolean_mask(tf.cast(tf.equal(decoded_symbols, labels), dtype=tf.float32),mask))
 		return accuracy
-
 
 	def loss_function(self, prbs, labels, mask):
 		"""
