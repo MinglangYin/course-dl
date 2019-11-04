@@ -15,7 +15,6 @@ class RNN_Seq2Seq(tf.keras.Model):
 
 		# TODO:
 		# 1) Define any hyperparameters
-
 		# Define batch size and optimizer/learning rate
 		self.batch_size = 100 # You can change this
 		self.embedding_size = 60 # You should change this
@@ -25,8 +24,8 @@ class RNN_Seq2Seq(tf.keras.Model):
 		self.E_e = tf.Variable(tf.random.truncated_normal([self.english_vocab_size, self.embedding_size], mean=0.0, stddev=0.1, dtype=tf.float32))
 		self.E_f = tf.Variable(tf.random.truncated_normal([self.french_vocab_size, self.embedding_size], mean=0.0, stddev=0.1, dtype=tf.float32))
 		self.encoder = tf.keras.layers.GRU(200, return_state=True)
-		self.decoder = tf.keras.layers.GRU(200, return_state=True)
-		self.dense = tf.keras.layers.Dense(self.english_vocab_size*self.english_window_size, activation='softmax')
+		self.decoder = tf.keras.layers.GRU(200, return_sequences=True)
+		self.dense = tf.keras.layers.Dense(self.english_vocab_size, activation='softmax')
 
 	@tf.function
 	def call(self, encoder_input, decoder_input):
@@ -39,14 +38,14 @@ class RNN_Seq2Seq(tf.keras.Model):
 		# TODO:
 		#1) Pass your french sentence embeddings to your encoder 
 		x_f = tf.nn.embedding_lookup(self.E_f, encoder_input)
-		encoder_state = self.encoder(x_f)[0]
+		encoder_state = self.encoder(x_f)[1]
 
 		#2) Pass your english sentence embeddings, and final state of your encoder, to your decoder
 		x_e = tf.nn.embedding_lookup(self.E_e, decoder_input)
-		decoder_out = self.decoder(x_e, initial_state=encoder_state)[0]
+		decoder_out = self.decoder(x_e, initial_state=encoder_state)
 
 		#3) Apply dense layer(s) to the decoder out to generate probabilities
-		prob = tf.reshape(self.dense(decoder_out), [self.batch_size, self.english_window_size, self.english_vocab_size])
+		prob = self.dense(decoder_out)
 		return prob
 
 	def accuracy_function(self, prbs, labels, mask):
@@ -60,11 +59,9 @@ class RNN_Seq2Seq(tf.keras.Model):
 		:param mask:  tensor that acts as a padding mask [batch_size x window_size]
 		:return: scalar tensor of accuracy of the batch between 0 and 1
 		"""
-
 		decoded_symbols = tf.argmax(input=prbs, axis=2)
 		accuracy = tf.reduce_mean(tf.boolean_mask(tf.cast(tf.equal(decoded_symbols, labels), dtype=tf.float32),mask))
 		return accuracy
-
 
 	def loss_function(self, prbs, labels, mask):
 		"""
