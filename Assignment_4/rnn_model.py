@@ -25,7 +25,7 @@ class RNN_Seq2Seq(tf.keras.Model):
 		self.E_f = tf.Variable(tf.random.truncated_normal([self.french_vocab_size, self.embedding_size], mean=0.0, stddev=0.1, dtype=tf.float32))
 		self.encoder = tf.keras.layers.GRU(200, return_state=True)
 		self.decoder = tf.keras.layers.GRU(200, return_sequences=True)
-		self.dense = tf.keras.layers.Dense(self.english_vocab_size, activation='softmax')
+		self.dense = tf.keras.layers.Dense(self.english_vocab_size)
 
 	@tf.function
 	def call(self, encoder_input, decoder_input):
@@ -45,7 +45,7 @@ class RNN_Seq2Seq(tf.keras.Model):
 		decoder_out = self.decoder(x_e, initial_state=encoder_state)
 
 		#3) Apply dense layer(s) to the decoder out to generate probabilities
-		prob = self.dense(decoder_out)
+		prob = tf.nn.softmax(self.dense(decoder_out))
 		return prob
 
 	def accuracy_function(self, prbs, labels, mask):

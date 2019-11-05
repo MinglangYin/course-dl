@@ -40,7 +40,7 @@ class Transformer_Seq2Seq(tf.keras.Model):
 			self.decoder = transformer.Transformer_Block(self.embedding_size, is_decoder=True, multi_headed=True)
 
 		# Define dense layer(s)
-		self.dense = tf.keras.layers.Dense(self.english_vocab_size, activation='softmax')
+		self.dense = tf.keras.layers.Dense(self.english_vocab_size)
 		
 	# @tf.function
 	def call(self, encoder_input, decoder_input):
@@ -66,7 +66,7 @@ class Transformer_Seq2Seq(tf.keras.Model):
 		decoder_out =self.decoder(x_e, context=encoder_out)
 
 		#3) Apply dense layer(s) to the decoder out to generate probabilities
-		prbs = self.dense(decoder_out)
+		prbs = tf.nn.softmax(self.dense(decoder_out))
 		return prbs
 
 	def accuracy_function(self, prbs, labels, mask):

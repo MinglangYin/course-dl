@@ -8,6 +8,7 @@ from rnn_model import RNN_Seq2Seq
 import sys
 import time
 
+tf.random.set_seed(12345)
 def train(model, train_french, train_english, eng_padding_index):
 	"""
 	Runs through one epoch - all training examples.
@@ -44,12 +45,9 @@ def train(model, train_french, train_english, eng_padding_index):
 		labels = eng_batch[:,1:]
 		mask = labels != eng_padding_index
 
-		print(sum(mask))
-
 		with tf.GradientTape() as tape:
 			prbs = model.call(encoder_input, decoder_input)
 			loss = model.loss_function(prbs, labels, mask)
-			# mean_loss = tf.reduce_mean(loss)
 			print(f'loss: {loss}')
 		
 		gradients = tape.gradient(loss, model.trainable_variables)
@@ -67,7 +65,7 @@ def test(model, test_french, test_english, eng_padding_index):
 	"""
 
 	# Note: Follow the same procedure as in train() to construct batches of data!
-	bsz, loss, accuracy = model.batch_size, 0, 0
+	bsz, loss_total, num_word, accuracy_total = model.batch_size, 0, 0, 0
 	n_batch = int(np.ceil(len(test_english)/bsz))
 	for i in range(n_batch):
 		if i == n_batch-1:
@@ -80,17 +78,23 @@ def test(model, test_french, test_english, eng_padding_index):
 		encoder_input = frch_batch
 		decoder_input = eng_batch[:,:-1]
 		labels = eng_batch[:,1:]
+
 		mask = labels != eng_padding_index
+		num_nonpad = np.sum(mask)
+		num_word += np.sum(mask)
 
 		prbs = model.call(encoder_input, decoder_input)
-		loss += model.loss_function(prbs, labels, mask)
-
+		loss = model.loss_function(prbs, labels, mask)
 		accuracy = model.accuracy_function(prbs, labels, mask)
 		print(f'loss: {loss}, accuracy: {accuracy}')
+
+		loss_total += loss*num_nonpad
+		accuracy_total += accuracy * num_nonpad
 		
-	perplexity = np.exp(loss/n_batch)
+	perplexity = np.exp(loss_total/num_word)
+	accuracy_per_symbol = accuracy_total/num_word
 	
-	return perplexity, accuracy
+	return perplexity, accuracy_per_symbol
 
 
 def main():	
@@ -116,10 +120,10 @@ def main():
 	for _ in range(epochs):
 		train(model, train_french, train_english, eng_padding_index)
 	end_time = time.time()
-	print(f'training time: {end_time-start_time}')
-
+	
 	perplexity, accu_persym = test(model, test_french, test_english, eng_padding_index)
 	print(f'perplexity: {perplexity}, accuracy_per_symbol: {accu_persym}')
+	print(f'training time: {(end_time-start_time)/60} min')
 
 if __name__ == '__main__':
    main()
