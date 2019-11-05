@@ -1,1 +1,12 @@
 README
+
+RNN
+	perplexity:
+	accuracy:
+
+TRANSFORMER: 
+Multi-headed 
+	perplexity: ~3.68
+	accuracy: ~79
+
+
