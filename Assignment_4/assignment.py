@@ -90,7 +90,7 @@ def test(model, test_french, test_english, eng_padding_index):
 
 		loss_total += loss*num_nonpad
 		accuracy_total += accuracy * num_nonpad
-		
+
 	perplexity = np.exp(loss_total/num_word)
 	accuracy_per_symbol = accuracy_total/num_word
 	

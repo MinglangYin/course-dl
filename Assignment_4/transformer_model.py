@@ -32,7 +32,7 @@ class Transformer_Seq2Seq(tf.keras.Model):
 		self.pos_f = transformer.Position_Encoding_Layer(self.french_window_size, self.embedding_size)
 
 		# Define encoder and decoder layers:
-		if 0:
+		if 1:
 			self.encoder = transformer.Transformer_Block(self.embedding_size, is_decoder=False, multi_headed=False)
 			self.decoder = transformer.Transformer_Block(self.embedding_size, is_decoder=True, multi_headed=False)
 		else:
@@ -42,7 +42,7 @@ class Transformer_Seq2Seq(tf.keras.Model):
 		# Define dense layer(s)
 		self.dense = tf.keras.layers.Dense(self.english_vocab_size)
 		
-	# @tf.function
+	@tf.function
 	def call(self, encoder_input, decoder_input):
 		"""
 		:param encoder_input: batched ids corresponding to french sentences
