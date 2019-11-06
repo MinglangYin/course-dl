@@ -1,12 +1,16 @@
 README
 
 RNN
-	perplexity:
-	accuracy:
+	perplexity: 6.78
+	accuracy: 68%
 
 TRANSFORMER: 
+Single head
+	perplexity: 4.7
+	accuracy: 74%
+
 Multi-headed 
-	perplexity: ~3.68
-	accuracy: ~79
+	perplexity: ~2.50
+	accuracy: 85%
 
-
+No bug
