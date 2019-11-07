@@ -5,6 +5,12 @@ import torch.nn as nn
 import torch.nn.functional as F
 import preprocess
 import dgl
+import time
+
+### problem unsolved:
+# which relu? nn.ReLU or torch.relu
+
+
 
 class Model(nn.Module):
 	"""
@@ -25,8 +31,16 @@ class Model(nn.Module):
 		# Initialize hyperparameters
 		self.raw_features = 119
 		self.num_classes = 2
+		self.lr = 5e-4
+		self.lift_features = 300
 
 		# Initialize trainable parameters
+		self.lift_layer = nn.Linear(self.raw_features, self.lift_features)
+		self.MPLayer_1 = MPLayer(self.lift_features, self.lift_features)
+		self.MPLayer_2 = MPLayer(self.lift_features, self.lift_features)
+		self.MPLayer_3 = MPLayer(self.lift_features, self.lift_features)
+		self.readout_layer = nn.Linear(self.lift_features, self.num_classes)
+		self.optimizer = torch.optim.Adam(self.parameters(), lr = self.lr)
 
 	def forward(self, g):
 		"""
@@ -43,7 +57,13 @@ class Model(nn.Module):
 		:param g: The DGL graph you wish to run inference on.
 		:return: logits tensor of size (batch_size, 2)
 		"""
-		pass
+		x = g.ndata.pop('h')
+		x = self.lift_layer(x)
+		x = torch.relu(self.MPLayer_1(g, x))
+		x = torch.relu(self.MPLayer_2(g, x))
+		x = torch.relu(self.MPLayer_3(g, x))
+		y = self.readout(g, x)
+		return y
 
 	def readout(self, g, node_feats):
 		""" 
@@ -51,15 +71,17 @@ class Model(nn.Module):
 		num_classes, and summing the node features in order to return logits.
 
 		Set your node features to be the output of your readout layer on node_feats,
-		then use dgl.sum to return logits. 
+		then use dgl.sum_nodes to return logits. 
 
 		:param g: The batched DGL graph
 		:param node_feats: The features at each node in the graph. Tensor of shape
 			                   (num_atoms_in_batched_graph,
 			                    size_of_node_vectors_from_prev_message_passing)
 		:return: logits tensor of size (batch_size, 2)
-		"""
-		pass
+		""" 
+		g.ndata['h'] = self.readout_layer(node_feats)
+		out = dgl.sum_nodes(g, 'h')
+		return out
 
 	def accuracy_function(self, logits, labels):
 		"""
@@ -70,7 +92,12 @@ class Model(nn.Module):
 									(1 for if the molecule is active against cancer, else 0).
 		:return: mean accuracy over batch.
 		"""
-		pass
+		times = 0
+		for i, label in enumerate(labels):
+			_binary = 1 if logits[i,1] > logits[i,0] else 0
+			times += 1 if _binary == label else 0
+		accuracy = times/labels.shape[0]
+		return accuracy
 
 class MPLayer(nn.Module):
 	"""
@@ -93,7 +120,9 @@ class MPLayer(nn.Module):
 		nodes when you end message passing for this round.
 		"""
 		super(MPLayer, self).__init__()
-		pass
+		self.in_feats = in_feats
+		self.out_feats = out_feats
+		self.layer = nn.Linear(self.in_feats, self.out_feats)
 
 	def forward(self, g, node_feats):
 		"""
@@ -113,7 +142,11 @@ class MPLayer(nn.Module):
 		(number_atoms_batched_graph, in_feats).
 		:return: node_features of size (number_atoms_batched_graph, out_feats)
 		"""
-		pass
+		g.ndata['h'] = node_feats
+		g.send(g.edges(), self.message)
+		g.recv(g.nodes(), self.reduce)
+		out_feats = self.layer(g.ndata.pop('h'))
+		return out_feats
 
 	def message(self, edges):
 		"""
@@ -129,8 +162,8 @@ class MPLayer(nn.Module):
 		computed for each edge. These messages can then be retrieved at
 		each destination node's mailbox (e.g destination_node.mailbox["string_you_chose"]) 
 		once DGL distributes them with the send function.
-		"""
-		pass
+		"""		
+		return {'dst': edges.src['h']}
 
 	def reduce(self, nodes):
 		"""
@@ -147,7 +180,7 @@ class MPLayer(nn.Module):
 		access ndata this whole time. The node data at this
 		attribute will be updated to the summed messages by DGL.
 		"""
-		pass
+		return {'h': torch.sum(nodes.mailbox['dst'], dim=1)}
 
 def build_graph(molecule):
 	"""
@@ -157,16 +190,31 @@ def build_graph(molecule):
 	:return: A DGL Graph with the same number of nodes as atoms in the molecule, edges connecting them,
 	         and node features applied.
 	"""
+
+	num_nodes = molecule.nodes.shape[0]
+
 	# TODO: Initialize a DGL Graph
+	g = dgl.DGLGraph()
+
 	# TODO: Call the graph's add_nodes method with the number of nodes in the molecule.
+	g.add_nodes(num_nodes)
+
 	# TODO: Turn molecule's nodes into a tensor, and set it to be the data of this graph.
+	nodes = np.asarray(molecule.nodes)
+	g.ndata['h'] = torch.tensor(nodes, dtype=torch.float32)
+
 	# TODO: Construct a tuple of src and dst nodes from the list of edges in molecules.
 	#      e.g if the edges of the molecule looked like [(1,2), (3,4), (5,6)] return
 	#      (1,3,5) and (2,4,6).
+	edges = np.asarray(molecule.edges)
+	src, dst = tuple(zip( *torch.tensor(edges, dtype=torch.float32) ))
+
 	# TODO: Call the graph's add_edges method to add edges from src to dst and dst to src.
 	#       Edges are directed in DGL, but undirected in a molecule, so you have
 	#       to add them both ways.
-	pass
+	g.add_edges(src, dst)
+	g.add_edges(dst, src)
+	return g
 
 def train(model, train_data):
 	"""
@@ -179,9 +227,9 @@ def train(model, train_data):
 		   batch_size  
 		4) Pass this graph to the Model's forward pass. Run the resulting logits
 				and the labels of the molecule batch through nn.CrossEntropyLoss.
-		3) Zero the gradient of your optimizer.
-		4) Do backprop on your loss.
-		5) Take a step with the optimizer.
+		5) Zero the gradient of your optimizer.
+		6) Do backprop on your loss.
+		7) Take a step with the optimizer.
 
 	Note that nn.CrossEntropyLoss expects LOGITS, not probabilities. It contains
 	a softmax layer on its own. Your model won't train well if you pass it probabilities.
@@ -191,7 +239,47 @@ def train(model, train_data):
 	in the training set from get_data
 	:return: nothing.
 	"""
-	pass
+	bsz = 10
+
+	## 1) build graph and collect them in a list
+	data_list = []
+	for molecule in train_data:
+		data_list.append(molecule)
+
+	## 2) batched graph
+	num_mole = len(data_list)
+	num_batch = round(num_mole/bsz)
+	for i in range(num_batch):
+		if i == num_batch-1:
+			data_batch = data_list[i*bsz:]
+		else:
+			data_batch = data_list[i*bsz:(i+1)*bsz]
+
+		labels = []
+		for molecule in data_batch:
+			labels.append(molecule.label)
+		## 3) form a tensor
+		labels = torch.tensor(np.asarray(labels), dtype=torch.long)
+		
+		## 4) pass to model.forward, and nn.CrossEntropyLoss
+		graph_batch = []
+		for molecule in data_batch:
+			graph_batch.append(build_graph(molecule))
+		graph_batch = dgl.batch(graph_batch)
+
+		logits = model(graph_batch)
+		loss = nn.CrossEntropyLoss()
+		l = loss(logits, labels)
+		print(f'loss: {l:.6f}')
+
+		## 5) zero the gradient
+		model.optimizer.zero_grad()
+
+		## 6) backward propagation
+		l.backward()
+
+		## 7) optimizer step
+		model.optimizer.step()
 
 def test(model, test_data):
 	"""
@@ -206,14 +294,44 @@ def test(model, test_data):
 	testing set from get_data.
 	:return: total accuracy over the test set (between 0 and 1)
 	"""
+
+	bsz = 10
+	accuracy = 0
+
+	## 1) build graph and collect them in a list
+	data_list = []
+	for molecule in test_data:
+		data_list.append(molecule)
+
+	## 2) batched graph
+	num_mole = len(data_list)
+	num_batch = round(num_mole/bsz)
+	for i in range(num_batch):
+		if i == num_batch-1:
+			data_batch = data_list[i*bsz:]
+		else:
+			data_batch = data_list[i*bsz:(i+1)*bsz]
+
+		labels = []
+		for molecule in data_batch:
+			labels.append(molecule.label)
+		## 3) form a tensor
+		labels = torch.tensor(np.asarray(labels), dtype=torch.long)
+		
+		## 4) pass to model.forward, and nn.CrossEntropyLoss
+		graph_batch = []
+		for molecule in data_batch:
+			graph_batch.append(build_graph(molecule))
+		graph_batch = dgl.batch(graph_batch)
 	
-	return accuracy
+		logits = model(graph_batch)
+		accuracy += model.accuracy_function(logits, labels)
+	return accuracy/num_batch
 
 def main():
 
 	# Hyperparameters
 	epochs = 15
-	device = torch.device("cpu")
 
 	# TODO: Return the training and testing data from get_data
 	preprocess.get_data('./1-balance.sdf')
@@ -221,13 +339,15 @@ def main():
 
 	# TODO: Instantiate model
 	model = Model()
-	train_data = torch.tensor(train_data, requires_grad=True, dtype=torch.float32).to(device)
-	test_data = torch.tensor(test_data, requires_grad=True, dtype=torch.float32).to(device)
 
 	# TODO: Train and test for up to 15 epochs.
+	start_time = time.time()
 	for epoch in range(epochs):
-		train(model, train_data)
 		print(f'epoch: {epoch}')
+		train(model, train_data)
+	end_time = time.time()
+	training_time = (end_time-start_time)/60
+	print(f'training time(min):{training_time:.6f}')
 
 	accuracy = test(model, test_data)
 	print(f'accuracy: {accuracy}')

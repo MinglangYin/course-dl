@@ -40,8 +40,18 @@ def get_data(file_name):
 	test_fraction = 0.1
 	number_of_elements = 119
 	
+	## one-hot molecule node
 	molecules = read_file(file_name)
+	for id_mol, molecule in enumerate(molecules):
+		node = molecule.nodes
+		tmp = np.zeros((len(node), number_of_elements))
+		for i, j in enumerate(node):
+			tmp[i, j] = 1
+		molecules[id_mol].nodes = tmp
 	
-	
-	pass
-	# return train_data, test_data
+	## shuffle 
+	shuffle(molecules)
+	num_train_mole = round(len(molecules)*(1-test_fraction))
+	train_data = molecules[:num_train_mole]
+	test_data = molecules[num_train_mole:]
+	return train_data, test_data
