@@ -44,7 +44,7 @@ def get_data(file_name):
 	molecules = read_file(file_name)
 	for id_mol, molecule in enumerate(molecules):
 		node = molecule.nodes
-		tmp = np.zeros((len(node), number_of_elements))
+		tmp = np.zeros((len(node), number_of_elements), dtype=np.float32)
 		for i, j in enumerate(node):
 			tmp[i, j] = 1
 		molecules[id_mol].nodes = tmp

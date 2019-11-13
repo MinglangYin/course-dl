@@ -10,8 +10,6 @@ import time
 ### problem unsolved:
 # which relu? nn.ReLU or torch.relu
 
-
-
 class Model(nn.Module):
 	"""
 	Model class representing your MPNN. This is (almost) exactly like your Model
@@ -33,6 +31,7 @@ class Model(nn.Module):
 		self.num_classes = 2
 		self.lr = 5e-4
 		self.lift_features = 300
+		self.bsz = 10
 
 		# Initialize trainable parameters
 		self.lift_layer = nn.Linear(self.raw_features, self.lift_features)
@@ -122,7 +121,8 @@ class MPLayer(nn.Module):
 		super(MPLayer, self).__init__()
 		self.in_feats = in_feats
 		self.out_feats = out_feats
-		self.layer = nn.Linear(self.in_feats, self.out_feats)
+		self.layer_trans = nn.Linear(self.in_feats, self.out_feats)
+		self.layer_msg = nn.Linear(self.in_feats, self.in_feats)
 
 	def forward(self, g, node_feats):
 		"""
@@ -145,7 +145,7 @@ class MPLayer(nn.Module):
 		g.ndata['h'] = node_feats
 		g.send(g.edges(), self.message)
 		g.recv(g.nodes(), self.reduce)
-		out_feats = self.layer(g.ndata.pop('h'))
+		out_feats = self.layer_trans(g.ndata.pop('h'))
 		return out_feats
 
 	def message(self, edges):
@@ -163,7 +163,7 @@ class MPLayer(nn.Module):
 		each destination node's mailbox (e.g destination_node.mailbox["string_you_chose"]) 
 		once DGL distributes them with the send function.
 		"""		
-		return {'dst': edges.src['h']}
+		return {'dst': torch.relu(self.layer_msg(edges.src['h']))}
 
 	def reduce(self, nodes):
 		"""
@@ -239,8 +239,8 @@ def train(model, train_data):
 	in the training set from get_data
 	:return: nothing.
 	"""
-	bsz = 10
 
+	bsz = model.bsz
 	## 1) build graph and collect them in a list
 	data_list = []
 	for molecule in train_data:
@@ -295,7 +295,7 @@ def test(model, test_data):
 	:return: total accuracy over the test set (between 0 and 1)
 	"""
 
-	bsz = 10
+	bsz = model.bsz
 	accuracy = 0
 
 	## 1) build graph and collect them in a list
@@ -325,7 +325,7 @@ def test(model, test_data):
 		graph_batch = dgl.batch(graph_batch)
 	
 		logits = model(graph_batch)
-		accuracy += model.accuracy_function(logits, labels)
+		accuracy += model.accuracy_function(logits.detach().numpy(),labels)
 	return accuracy/num_batch
 
 def main():
@@ -345,6 +345,8 @@ def main():
 	for epoch in range(epochs):
 		print(f'epoch: {epoch}')
 		train(model, train_data)
+		accuracy = test(model, test_data)
+		print(f'accuracy = {accuracy}')
 	end_time = time.time()
 	training_time = (end_time-start_time)/60
 	print(f'training time(min):{training_time:.6f}')
