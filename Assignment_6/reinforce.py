@@ -24,11 +24,11 @@ class Reinforce(tf.keras.Model):
         self.num_actions = num_actions
         
         # TODO: Define network parameters and optimizer
-        self.hidden_size = 100
+        self.hidden_size = 50
 
         self.input_layer = tf.keras.layers.Dense(self.hidden_size, activation='relu', input_shape=(-1,state_size))
-        self.dense_layer_1 = tf.keras.layers.Dense(self.hidden_size, activation='relu')
-        self.dense_layer_2 = tf.keras.layers.Dense(self.hidden_size, activation='relu')
+        # self.dense_layer_1 = tf.keras.layers.Dense(self.hidden_size, activation='relu')
+        # self.dense_layer_2 = tf.keras.layers.Dense(self.hidden_size, activation='relu')
         self.output_layer = tf.keras.layers.Dense(num_actions, activation='softmax')
 
         self.optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
@@ -47,8 +47,8 @@ class Reinforce(tf.keras.Model):
         """
         # TODO: implement this ~
         x = self.input_layer(states)
-        x = self.dense_layer_1(x)
-        x = self.dense_layer_2(x)
+        # x = self.dense_layer_1(x)
+        # x = self.dense_layer_2(x)
         prbs = self.output_layer(x)
         return prbs
 
