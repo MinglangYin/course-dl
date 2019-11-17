@@ -24,6 +24,14 @@ class Reinforce(tf.keras.Model):
         self.num_actions = num_actions
         
         # TODO: Define network parameters and optimizer
+        self.hidden_size = 100
+
+        self.input_layer = tf.keras.layers.Dense(self.hidden_size, activation='relu', input_shape=(-1,state_size))
+        self.dense_layer_1 = tf.keras.layers.Dense(self.hidden_size, activation='relu')
+        self.dense_layer_2 = tf.keras.layers.Dense(self.hidden_size, activation='relu')
+        self.output_layer = tf.keras.layers.Dense(num_actions, activation='softmax')
+
+        self.optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
         
     @tf.function
     def call(self, states):
@@ -38,7 +46,11 @@ class Reinforce(tf.keras.Model):
         of each state in the episode
         """
         # TODO: implement this ~
-        pass
+        x = self.input_layer(states)
+        x = self.dense_layer_1(x)
+        x = self.dense_layer_2(x)
+        prbs = self.output_layer(x)
+        return prbs
 
     def loss(self, states, actions, discounted_rewards):
         """
@@ -51,5 +63,12 @@ class Reinforce(tf.keras.Model):
         """
         # TODO: implement this uWu
         # Hint: Use gather_nd to get the probability of each action that was actually taken in the episode.
-        pass
+
+        prbs = self.call(states)
+        prbs_real = tf.gather_nd(prbs, actions, batch_dims=1)[:,None]
+        # tmp = tf.math.log(prbs_real)*discounted_rewards
+        # print(f'dis_reward: {discounted_rewards}')
+        # print(tmp)
+        loss = -tf.reduce_sum(tf.math.log(prbs_real)*discounted_rewards)
+        return loss
 

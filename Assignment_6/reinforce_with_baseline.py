@@ -27,7 +27,19 @@ class ReinforceWithBaseline(tf.keras.Model):
         self.num_actions = num_actions
 
         # TODO: Define actor network parameters, critic network parameters, and optimizer
-        pass
+        self.hidden_size = 100
+
+        self.crit_dense_1 = tf.keras.layers.Dense(self.hidden_size, activation='relu', input_shape=(-1,state_size))
+        self.crit_dense_2 = tf.keras.layers.Dense(self.hidden_size, activation='relu')
+        self.crit_dense_3 = tf.keras.layers.Dense(self.hidden_size, activation='relu')
+        self.crit_dense_4 = tf.keras.layers.Dense(1, activation='softmax')
+
+        self.act_dense_1 = tf.keras.layers.Dense(self.hidden_size, activation='relu', input_shape=(-1,state_size))
+        self.act_dense_2 = tf.keras.layers.Dense(self.hidden_size, activation='relu')
+        self.act_dense_3 = tf.keras.layers.Dense(self.hidden_size, activation='relu')
+        self.act_dense_4 = tf.keras.layers.Dense(num_actions, activation='softmax')
+
+        self.optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
 
     @tf.function
     def call(self, states):
@@ -42,7 +54,11 @@ class ReinforceWithBaseline(tf.keras.Model):
         of each state in the episode
         """
         # TODO: implement this!
-        pass
+        x = self.act_dense_1(states)
+        x = self.act_dense_2(x)
+        x = self.act_dense_3(x)
+        prbs = self.act_dense_4(x)        
+        return prbs
 
     def value_function(self, states):
         """
@@ -54,7 +70,11 @@ class ReinforceWithBaseline(tf.keras.Model):
         :return: A [episode_length] matrix representing the value of each state
         """
         # TODO: implement this :D
-        pass
+        x = self.crit_dense_1(states)
+        x = self.crit_dense_2(x)
+        x = self.crit_dense_3(x)
+        prbs = self.crit_dense_4(x)
+        return prbs
 
     def loss(self, states, actions, discounted_rewards):
         """
@@ -62,11 +82,15 @@ class ReinforceWithBaseline(tf.keras.Model):
 
         Remember that the loss is similar to the loss as in reinforce.py, with one specific change.
 
-        1) Instead of element-wise multiplying with discounted_rewards, you want to element-wise multiply with your advantage. Here, advantage is defined as discounted_rewards - state_values, where state_values is calculated by the critic network.
+        1) Instead of element-wise multiplying with discounted_rewards, you want to element-wise multiply with your advantage. 
+        Here, advantage is defined as discounted_rewards - state_values, where state_values is calculated by the critic network.
         
-        2) In your actor loss, you must set advantage to be tf.stop_gradient(discounted_rewards - state_values). You may need to cast your (discounted_rewards - state_values) to tf.float32. tf.stop_gradient is used here to stop the loss calculated on the actor network from propagating back to the critic network.
+        2) In your actor loss, you must set advantage to be tf.stop_gradient(discounted_rewards - state_values). 
+        You may need to cast your (discounted_rewards - state_values) to tf.float32. tf.stop_gradient is used here to stop the 
+        loss calculated on the actor network from propagating back to the critic network.
         
-        3) To calculate the loss for your critic network. Do this by calling the value_function on the states and then taking the sum of the squared advantage.
+        3) To calculate the loss for your critic network. Do this by calling the value_function on the states and then taking 
+        the sum of the squared advantage.
 
         :param states: A batch of states of shape [episode_length, state_size]
         :param actions: History of actions taken at each timestep of the episode (represented as an [episode_length] array)
@@ -75,4 +99,15 @@ class ReinforceWithBaseline(tf.keras.Model):
         """
         # TODO: implement this :)
         # Hint: use tf.gather_nd (https://www.tensorflow.org/api_docs/python/tf/gather_nd) to get the probabilities of the actions taken by the model
-        pass
+        prbs = self.call(states)
+        prbs_real = tf.gather_nd(prbs, actions, batch_dims=1)[:,None]
+
+        state_value = self.value_function(states)
+
+        advantage = tf.cast(tf.stop_gradient((discounted_rewards - state_value)), dtype=tf.float32)
+        loss_actor = -tf.reduce_sum(tf.math.log(prbs_real)*advantage)
+        
+        loss_crit = tf.reduce_sum((discounted_rewards - self.value_function(states))**2)
+
+        loss = loss_crit + loss_actor
+        return loss
