@@ -27,17 +27,15 @@ class ReinforceWithBaseline(tf.keras.Model):
         self.num_actions = num_actions
 
         # TODO: Define actor network parameters, critic network parameters, and optimizer
-        self.hidden_size = 50
+        self.hidden_size = 100
 
         self.crit_dense_1 = tf.keras.layers.Dense(self.hidden_size, activation='relu', input_shape=(-1,state_size))
         self.crit_dense_2 = tf.keras.layers.Dense(self.hidden_size, activation='relu')
-        # self.crit_dense_3 = tf.keras.layers.Dense(self.hidden_size, activation='relu')
-        self.crit_dense_4 = tf.keras.layers.Dense(1, activation='linear')
+        self.crit_dense_3 = tf.keras.layers.Dense(1, activation='linear')
 
         self.act_dense_1 = tf.keras.layers.Dense(self.hidden_size, activation='relu', input_shape=(-1,state_size))
         self.act_dense_2 = tf.keras.layers.Dense(self.hidden_size, activation='relu')
-        # self.act_dense_3 = tf.keras.layers.Dense(self.hidden_size, activation='relu')
-        self.act_dense_4 = tf.keras.layers.Dense(num_actions, activation='softmax')
+        self.act_dense_3 = tf.keras.layers.Dense(num_actions, activation='softmax')
 
         self.optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
 
@@ -56,8 +54,7 @@ class ReinforceWithBaseline(tf.keras.Model):
         # TODO: implement this!
         x = self.act_dense_1(states)
         x = self.act_dense_2(x)
-        # x = self.act_dense_3(x)
-        out = self.act_dense_4(x)        
+        out = self.act_dense_3(x)        
         return out
 
     def value_function(self, states):
@@ -72,8 +69,7 @@ class ReinforceWithBaseline(tf.keras.Model):
         # TODO: implement this :D
         x = self.crit_dense_1(states)
         x = self.crit_dense_2(x)
-        # x = self.crit_dense_3(x)
-        prbs = self.crit_dense_4(x)
+        prbs = self.crit_dense_3(x)
         return prbs
 
     def loss(self, states, actions, discounted_rewards):

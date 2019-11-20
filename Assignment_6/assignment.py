@@ -37,12 +37,12 @@ def discount(rewards, discount_factor=.99):
     """
     # TODO: Compute discounted rewards
     discounted_rewards = []
+    rewards.reverse()
     reward_sum = 0
     for reward in rewards:
         reward_sum = reward + discount_factor*reward_sum 
         discounted_rewards.append(reward_sum)
     discounted_rewards = discounted_rewards[::-1]
-    # print(discounted_rewards) 
     return discounted_rewards
 
 
