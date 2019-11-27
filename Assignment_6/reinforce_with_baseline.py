@@ -31,13 +31,11 @@ class ReinforceWithBaseline(tf.keras.Model):
 
         self.crit_dense_1 = tf.keras.layers.Dense(self.hidden_size, activation='relu', input_shape=(-1,state_size))
         self.crit_dense_2 = tf.keras.layers.Dense(self.hidden_size, activation='relu')
-        self.crit_dense_3 = tf.keras.layers.Dense(self.hidden_size, activation='relu')
-        self.crit_dense_4 = tf.keras.layers.Dense(1, activation='softmax')
+        self.crit_dense_3 = tf.keras.layers.Dense(1, activation='linear')
 
         self.act_dense_1 = tf.keras.layers.Dense(self.hidden_size, activation='relu', input_shape=(-1,state_size))
         self.act_dense_2 = tf.keras.layers.Dense(self.hidden_size, activation='relu')
-        self.act_dense_3 = tf.keras.layers.Dense(self.hidden_size, activation='relu')
-        self.act_dense_4 = tf.keras.layers.Dense(num_actions, activation='softmax')
+        self.act_dense_3 = tf.keras.layers.Dense(num_actions, activation='softmax')
 
         self.optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
 
@@ -56,9 +54,8 @@ class ReinforceWithBaseline(tf.keras.Model):
         # TODO: implement this!
         x = self.act_dense_1(states)
         x = self.act_dense_2(x)
-        x = self.act_dense_3(x)
-        prbs = self.act_dense_4(x)        
-        return prbs
+        out = self.act_dense_3(x)        
+        return out
 
     def value_function(self, states):
         """
@@ -72,8 +69,7 @@ class ReinforceWithBaseline(tf.keras.Model):
         # TODO: implement this :D
         x = self.crit_dense_1(states)
         x = self.crit_dense_2(x)
-        x = self.crit_dense_3(x)
-        prbs = self.crit_dense_4(x)
+        prbs = self.crit_dense_3(x)
         return prbs
 
     def loss(self, states, actions, discounted_rewards):
@@ -104,10 +100,11 @@ class ReinforceWithBaseline(tf.keras.Model):
 
         state_value = self.value_function(states)
 
-        advantage = tf.cast(tf.stop_gradient((discounted_rewards - state_value)), dtype=tf.float32)
-        loss_actor = -tf.reduce_sum(tf.math.log(prbs_real)*advantage)
+        advantage = tf.cast((discounted_rewards - state_value), dtype=tf.float32)
         
-        loss_crit = tf.reduce_sum((discounted_rewards - self.value_function(states))**2)
+        loss_actor = -tf.reduce_sum(tf.math.log(prbs_real)*tf.stop_gradient(advantage))
+        
+        loss_crit = tf.reduce_sum(advantage**2)
 
-        loss = loss_crit + loss_actor
+        loss = 0.5*loss_crit + loss_actor
         return loss
