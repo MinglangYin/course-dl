@@ -109,7 +109,35 @@ class Generator_Model(tf.keras.Model):
         """
         super(Generator_Model, self).__init__()
         # TODO: Define the model, loss, and optimizer
-        pass
+        self.bsz = args.batch_size
+        self.Generator = tf.keras.Sequential()
+        self.Generator.add(Dense(1024*4*4))
+        self.Generator.add( Reshape( (4,4,1024)))
+        self.Generator.add(Conv2DTranspose(filters=512, strides=2, kernel_size=[2,2], use_bias=True, 
+                                padding='same',kernel_initializer=tf.random_normal_initializer(0.0, 0.1), 
+                                bias_initializer=tf.random_normal_initializer(0.0, 0.1)) )
+        self.Generator.add(BatchNormalization())
+        self.Generator.add(tf.keras.layers.ReLU())
+
+        self.Generator.add(Conv2DTranspose(filters=256, strides=2, kernel_size=[2,2], use_bias=True, 
+                                padding='same',kernel_initializer=tf.random_normal_initializer(0.0, 0.1), 
+                                bias_initializer=tf.random_normal_initializer(0.0, 0.1)) )
+        self.Generator.add(BatchNormalization())
+        self.Generator.add(tf.keras.layers.ReLU())
+
+        self.Generator.add(Conv2DTranspose(filters=128, strides=2, kernel_size=[2,2], use_bias=True, 
+                                padding='same',kernel_initializer=tf.random_normal_initializer(0.0, 0.1), 
+                                bias_initializer=tf.random_normal_initializer(0.0, 0.1)) )
+        self.Generator.add(BatchNormalization())
+        self.Generator.add(tf.keras.layers.ReLU())
+
+        self.Generator.add(Conv2DTranspose(filters=3, strides=2, kernel_size=[2,2], use_bias=True, 
+                                padding='same',kernel_initializer=tf.random_normal_initializer(0.0, 0.1), 
+                                bias_initializer=tf.random_normal_initializer(0.0, 0.1), activation='tanh'))
+
+        self.optimizer = tf.keras.optimizers.Adam(learning_rate = args.learn_rate, beta_1 = args.beta1)
+
+        self.bce = tf.keras.losses.BinaryCrossentropy()
 
     @tf.function
     def call(self, inputs):
@@ -121,7 +149,8 @@ class Generator_Model(tf.keras.Model):
         :return: prescaled generated images, shape=[batch_size, height, width, channel]
         """
         # TODO: Call the forward pass
-        pass
+        outputs = self.Generator(inputs)
+        return outputs
 
     @tf.function
     def loss_function(self, disc_fake_output):
@@ -133,7 +162,7 @@ class Generator_Model(tf.keras.Model):
         :return: loss, the cross entropy loss, scalar
         """
         # TODO: Calculate the loss
-        pass
+        return tf.reduce_mean(self.bce(labels=tf.ones_like(disc_fake_output), logits=disc_fake_output))
 
 class Discriminator_Model(tf.keras.Model):
     def __init__(self):
@@ -142,8 +171,30 @@ class Discriminator_Model(tf.keras.Model):
         The model for the discriminator network is defined here. 
         """
         # TODO: Define the model, loss, and optimizer
-        pass
+        self.Discriminator = tf.keras.Sequential()
+        self.Discriminator.add(tf.keras.layers.Conv2D(filters=128, strides=2, kernel_size=[4,4], use_bias=True, padding='same',
+                                kernel_initializer=tf.random_normal_initializer(0.0, 0.1),
+                                bias_initializer=tf.random_normal_initializer(0.0, 0.1)) ) 
+        self.Discriminator.add(BatchNormalization())
+        self.Discriminator.add(LeakyReLU(alpha=0.2))
 
+        self.Discriminator.add(tf.keras.layers.Conv2D(filters=256, strides=2, kernel_size=[4,4], use_bias=True, padding='same',
+                                kernel_initializer=tf.random_normal_initializer(0.0, 0.1),
+                                bias_initializer=tf.random_normal_initializer(0.0, 0.1)) ) 
+        self.Discriminator.add(BatchNormalization())
+        self.Discriminator.add(LeakyReLU(alpha=0.2))
+
+        self.Discriminator.add(tf.keras.layers.Conv2D(filters=512, strides=2, kernel_size=[4,4], use_bias=True, padding='same',
+                                kernel_initializer=tf.random_normal_initializer(0.0, 0.1),
+                                bias_initializer=tf.random_normal_initializer(0.0, 0.1)) ) 
+        self.Discriminator.add(BatchNormalization())
+        self.Discriminator.add(LeakyReLU(alpha=0.2))
+        self.Discriminator.add(Flatten())
+        self.Discriminator.add(Dense(2, activation='softmax'))
+
+        self.optimizer = tf.keras.optimizers.Adam(learning_rate = args.learn_rate, beta_1 = args.beta1)
+
+        self.bce = tf.keras.losses.BinaryCrossentropy()
 
     @tf.function
     def call(self, inputs):
@@ -155,7 +206,8 @@ class Discriminator_Model(tf.keras.Model):
         :return: a batch of values indicating whether the image is real or fake, shape=[batch_size, 1]
         """
         # TODO: Call the forward pass
-        pass
+        output = self.Discriminator(inputs)
+        return output
 
     def loss_function(self, disc_real_output, disc_fake_output):
         """
@@ -167,7 +219,12 @@ class Discriminator_Model(tf.keras.Model):
         :return: loss, the combined cross entropy loss, scalar
         """
         # TODO: Calculate the loss
-        pass
+        print(tf.zeros_like(disc_fake_output))
+        print(disc_fake_output)
+
+        loss = tf.reduce_mean(self.bce(labels=tf.zeros_like(disc_fake_output), logits=disc_fake_output)) + \
+            tf.reduce_mean(self.bce(labels=tf.ones_like(disc_real_output), logits=disc_real_output))
+        return loss
 
 ## --------------------------------------------------------------------------------------
 
@@ -186,6 +243,31 @@ def train(generator, discriminator, dataset_iterator, manager):
     # Loop over our data until we run out
     for iteration, batch in enumerate(dataset_iterator):
         # TODO: Train the model
+        bsz = args.z_dim 
+        inputs = np.random.normal(loc=5, scale=0.4, size=(bsz, 1)).astype(np.float32)
+        
+        gen_optimizer = generator.optimizer
+        dis_optimizer = discriminator.optimizer
+
+        with tf.GradientTape(persistent=True) as tape:
+            # Create a batch of fake data using the generator.
+            gen_output = generator.call(inputs)
+
+            # Have the discriminator predict the log probabilities that the real and fake data are real
+            logits_fake = discriminator(gen_output)
+            logits_real = discriminator(batch)
+            
+            # Calculate the loss for the generator and discriminator separately
+            g_loss = generator.loss_function(logits_fake)
+            d_loss = discriminator.loss_function(logits_fake, logits_real)
+  
+        # Optimize the discriminator
+        d_gradients = tape.gradient(d_loss, discriminator.trainable_variables)
+        dis_optimizer.apply_gradients(zip(d_gradients, discriminator.trainable_variables))
+        
+        # Optimize the generator
+        g_gradients = tape.gradient(g_loss, generator.trainable_variables)
+        gen_optimizer.apply_gradients(zip(g_gradients, generator.trainable_variables))
 
         # Save
         if iteration % args.save_every == 0:
