@@ -162,7 +162,7 @@ class Generator_Model(tf.keras.Model):
         :return: loss, the cross entropy loss, scalar
         """
         # TODO: Calculate the loss
-        return tf.reduce_mean(self.bce(labels=tf.ones_like(disc_fake_output), logits=disc_fake_output))
+        return tf.reduce_mean(self.bce(tf.ones_like(disc_fake_output), disc_fake_output))
 
 class Discriminator_Model(tf.keras.Model):
     def __init__(self):
@@ -190,7 +190,7 @@ class Discriminator_Model(tf.keras.Model):
         self.Discriminator.add(BatchNormalization())
         self.Discriminator.add(LeakyReLU(alpha=0.2))
         self.Discriminator.add(Flatten())
-        self.Discriminator.add(Dense(2, activation='softmax'))
+        self.Discriminator.add(Dense(1, activation='softmax'))
 
         self.optimizer = tf.keras.optimizers.Adam(learning_rate = args.learn_rate, beta_1 = args.beta1)
 
@@ -219,11 +219,11 @@ class Discriminator_Model(tf.keras.Model):
         :return: loss, the combined cross entropy loss, scalar
         """
         # TODO: Calculate the loss
-        print(tf.zeros_like(disc_fake_output))
-        print(disc_fake_output)
+        # print(tf.zeros_like(disc_fake_output))
+        # print(disc_fake_output)
 
-        loss = tf.reduce_mean(self.bce(labels=tf.zeros_like(disc_fake_output), logits=disc_fake_output)) + \
-            tf.reduce_mean(self.bce(labels=tf.ones_like(disc_real_output), logits=disc_real_output))
+        loss = tf.reduce_mean(self.bce(tf.zeros_like(disc_fake_output), disc_fake_output)) + \
+            tf.reduce_mean(self.bce(tf.ones_like(disc_real_output), disc_real_output))
         return loss
 
 ## --------------------------------------------------------------------------------------
@@ -278,6 +278,8 @@ def train(generator, discriminator, dataset_iterator, manager):
         if iteration % 500 == 0:
             fid_ = fid_function(batch, gen_output)
             print('**** INCEPTION DISTANCE: %g ****' % fid_)
+
+        print(f'g_loss: {g_loss:.6f}, d_loss: {d_loss:.6f}')
 
 
 # Test the model by generating some samples.
