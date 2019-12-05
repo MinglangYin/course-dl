@@ -165,8 +165,9 @@ class Generator_Model(tf.keras.Model):
         :return: loss, the cross entropy loss, scalar
         """
         # TODO: Calculate the loss
-
-        return tf.reduce_mean(self.bce(tf.ones_like(disc_fake_output), disc_fake_output))
+        loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(labels=tf.ones_like(disc_fake_output), logits=disc_fake_output))
+        return loss
+        # return tf.reduce_mean(self.bce(tf.ones_like(disc_fake_output), disc_fake_output))
 
 class Discriminator_Model(tf.keras.Model):
     def __init__(self):
@@ -176,25 +177,20 @@ class Discriminator_Model(tf.keras.Model):
         """
         # TODO: Define the model, loss, and optimizer
         self.Discriminator = tf.keras.Sequential()
-        self.Discriminator.add(tf.keras.layers.Conv2D(filters=128, strides=2, kernel_size=[4,4], use_bias=True, padding='same',
-                                kernel_initializer=tf.random_normal_initializer(0.0, 0.1),
-                                bias_initializer=tf.random_normal_initializer(0.0, 0.1)) ) 
+        self.Discriminator.add(tf.keras.layers.Conv2D(filters=128, strides=2, kernel_size=[4,4], use_bias=True, padding='same')) 
         # self.Discriminator.add(BatchNormalization())
         self.Discriminator.add(LeakyReLU(alpha=0.2))
 
-        self.Discriminator.add(tf.keras.layers.Conv2D(filters=256, strides=2, kernel_size=[4,4], use_bias=True, padding='same',
-                                kernel_initializer=tf.random_normal_initializer(0.0, 0.1),
-                                bias_initializer=tf.random_normal_initializer(0.0, 0.1)) ) 
+        self.Discriminator.add(tf.keras.layers.Conv2D(filters=256, strides=2, kernel_size=[4,4], use_bias=True, padding='same'))
         self.Discriminator.add(BatchNormalization())
         self.Discriminator.add(LeakyReLU(alpha=0.2))
 
-        self.Discriminator.add(tf.keras.layers.Conv2D(filters=512, strides=2, kernel_size=[4,4], use_bias=True, padding='same',
-                                kernel_initializer=tf.random_normal_initializer(0.0, 0.1),
-                                bias_initializer=tf.random_normal_initializer(0.0, 0.1)) ) 
+        self.Discriminator.add(tf.keras.layers.Conv2D(filters=512, strides=2, kernel_size=[4,4], use_bias=True, padding='same')) 
         self.Discriminator.add(BatchNormalization())
         self.Discriminator.add(LeakyReLU(alpha=0.2))
         self.Discriminator.add(Flatten())
-        self.Discriminator.add(Dense(1, activation='sigmoid'))
+        # self.Discriminator.add(Dense(1, activation='sigmoid'))
+        self.Discriminator.add(Dense(1))
 
         self.optimizer = tf.keras.optimizers.Adam(learning_rate = args.learn_rate, beta_1 = args.beta1)
 
@@ -226,8 +222,11 @@ class Discriminator_Model(tf.keras.Model):
         # print(tf.zeros_like(disc_fake_output))
         # print(disc_fake_output)
 
-        loss = tf.reduce_mean(self.bce(tf.zeros_like(disc_fake_output), disc_fake_output)) + \
-            tf.reduce_mean(self.bce(tf.ones_like(disc_real_output), disc_real_output))
+        # loss = tf.reduce_mean(self.bce(tf.zeros_like(disc_fake_output), disc_fake_output)) + \
+        #     tf.reduce_mean(self.bce(tf.ones_like(disc_real_output), disc_real_output))
+
+        loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(labels=tf.zeros_like(disc_fake_output), logits=disc_fake_output))
+        loss += tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(labels=tf.ones_like(disc_real_output), logits=disc_real_output))
         return loss
 
 ## --------------------------------------------------------------------------------------
@@ -248,8 +247,7 @@ def train(generator, discriminator, dataset_iterator, manager):
     for iteration, batch in enumerate(dataset_iterator):
         # TODO: Train the model
         bsz = args.z_dim 
-        inputs = np.random.normal(loc=5, scale=0.4, size=(bsz, 1)).astype(np.float32)
-        
+        inputs = np.random.normal(loc=5, scale=5, size=(bsz, 1)).astype(np.float32)
         gen_optimizer = generator.optimizer
         dis_optimizer = discriminator.optimizer
 
@@ -280,7 +278,7 @@ def train(generator, discriminator, dataset_iterator, manager):
 
         # Calculate inception distance and track the fid in order
         # to return the average
-        if iteration % 500 == 0:
+        if iteration % 10 == 0:
             fid_ = fid_function(batch, gen_output)
             print('**** INCEPTION DISTANCE: %g ****' % fid_)
 
