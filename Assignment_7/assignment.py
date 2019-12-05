@@ -11,6 +11,8 @@ from imageio import imwrite
 import os
 import argparse
 
+import time
+
 # Killing optional CPU driver warnings
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
@@ -137,9 +139,10 @@ class Generator_Model(tf.keras.Model):
 
         self.optimizer = tf.keras.optimizers.Adam(learning_rate = args.learn_rate, beta_1 = args.beta1)
 
-        self.bce = tf.keras.losses.BinaryCrossentropy()
+        self.bce = tf.keras.losses.BinaryCrossentropy(from_logits=False)
 
-    @tf.function
+
+    # @tf.function
     def call(self, inputs):
         """
         Executes the generator model on the random noise vectors.
@@ -152,7 +155,7 @@ class Generator_Model(tf.keras.Model):
         outputs = self.Generator(inputs)
         return outputs
 
-    @tf.function
+    # @tf.function
     def loss_function(self, disc_fake_output):
         """
         Outputs the loss given the discriminator output on the generated images.
@@ -162,6 +165,7 @@ class Generator_Model(tf.keras.Model):
         :return: loss, the cross entropy loss, scalar
         """
         # TODO: Calculate the loss
+
         return tf.reduce_mean(self.bce(tf.ones_like(disc_fake_output), disc_fake_output))
 
 class Discriminator_Model(tf.keras.Model):
@@ -175,7 +179,7 @@ class Discriminator_Model(tf.keras.Model):
         self.Discriminator.add(tf.keras.layers.Conv2D(filters=128, strides=2, kernel_size=[4,4], use_bias=True, padding='same',
                                 kernel_initializer=tf.random_normal_initializer(0.0, 0.1),
                                 bias_initializer=tf.random_normal_initializer(0.0, 0.1)) ) 
-        self.Discriminator.add(BatchNormalization())
+        # self.Discriminator.add(BatchNormalization())
         self.Discriminator.add(LeakyReLU(alpha=0.2))
 
         self.Discriminator.add(tf.keras.layers.Conv2D(filters=256, strides=2, kernel_size=[4,4], use_bias=True, padding='same',
@@ -190,11 +194,11 @@ class Discriminator_Model(tf.keras.Model):
         self.Discriminator.add(BatchNormalization())
         self.Discriminator.add(LeakyReLU(alpha=0.2))
         self.Discriminator.add(Flatten())
-        self.Discriminator.add(Dense(1, activation='softmax'))
+        self.Discriminator.add(Dense(1, activation='sigmoid'))
 
         self.optimizer = tf.keras.optimizers.Adam(learning_rate = args.learn_rate, beta_1 = args.beta1)
 
-        self.bce = tf.keras.losses.BinaryCrossentropy()
+        self.bce = tf.keras.losses.BinaryCrossentropy(from_logits=False)
 
     @tf.function
     def call(self, inputs):
@@ -262,8 +266,9 @@ def train(generator, discriminator, dataset_iterator, manager):
             d_loss = discriminator.loss_function(logits_fake, logits_real)
   
         # Optimize the discriminator
-        d_gradients = tape.gradient(d_loss, discriminator.trainable_variables)
-        dis_optimizer.apply_gradients(zip(d_gradients, discriminator.trainable_variables))
+        if iteration % 2 == 0:
+            d_gradients = tape.gradient(d_loss, discriminator.trainable_variables)
+            dis_optimizer.apply_gradients(zip(d_gradients, discriminator.trainable_variables))
         
         # Optimize the generator
         g_gradients = tape.gradient(g_loss, generator.trainable_variables)
@@ -332,6 +337,7 @@ def main():
         # Specify an invalid GPU device
         with tf.device('/device:' + args.device):
             if args.mode == 'train':
+                start_time = time.time
                 for epoch in range(0, args.num_epochs):
                     print('========================== EPOCH %d  ==========================' % epoch)
                     avg_fid = train(generator, discriminator, dataset_iterator, manager)
@@ -339,6 +345,8 @@ def main():
                     # Save at the end of the epoch, too
                     print("**** SAVING CHECKPOINT AT END OF EPOCH ****")
                     manager.save()
+                end_time = time.time
+                print(f'training time is: {(end_time-start_time)/60}')
             if args.mode == 'test':
                 test(generator)
     except RuntimeError as e:
