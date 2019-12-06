@@ -111,36 +111,20 @@ class Generator_Model(tf.keras.Model):
         """
         super(Generator_Model, self).__init__()
         # TODO: Define the model, loss, and optimizer
-        self.bsz = args.batch_size
         self.Generator = tf.keras.Sequential()
-        self.Generator.add(Dense(1024*4*4))
-        self.Generator.add( Reshape( (4,4,1024)))
-        self.Generator.add(Conv2DTranspose(filters=512, strides=2, kernel_size=[2,2], use_bias=True, 
-                                padding='same',kernel_initializer=tf.random_normal_initializer(0.0, 0.1), 
-                                bias_initializer=tf.random_normal_initializer(0.0, 0.1)) )
+        self.Generator.add(Dense(512*4*4))
+        self.Generator.add( Reshape( (4,4,512)))
+        self.Generator.add(Conv2DTranspose(filters=256, strides=2, kernel_size=[2,2], use_bias=True, padding='same') )
         self.Generator.add(BatchNormalization())
         self.Generator.add(tf.keras.layers.ReLU())
-
-        self.Generator.add(Conv2DTranspose(filters=256, strides=2, kernel_size=[2,2], use_bias=True, 
-                                padding='same',kernel_initializer=tf.random_normal_initializer(0.0, 0.1), 
-                                bias_initializer=tf.random_normal_initializer(0.0, 0.1)) )
+        self.Generator.add(Conv2DTranspose(filters=128, strides=2, kernel_size=[2,2], use_bias=True, padding='same') )
         self.Generator.add(BatchNormalization())
         self.Generator.add(tf.keras.layers.ReLU())
-
-        self.Generator.add(Conv2DTranspose(filters=128, strides=2, kernel_size=[2,2], use_bias=True, 
-                                padding='same',kernel_initializer=tf.random_normal_initializer(0.0, 0.1), 
-                                bias_initializer=tf.random_normal_initializer(0.0, 0.1)) )
+        self.Generator.add(Conv2DTranspose(filters=64, strides=2, kernel_size=[2,2], use_bias=True, padding='same') )
         self.Generator.add(BatchNormalization())
         self.Generator.add(tf.keras.layers.ReLU())
-
-        self.Generator.add(Conv2DTranspose(filters=3, strides=2, kernel_size=[2,2], use_bias=True, 
-                                padding='same',kernel_initializer=tf.random_normal_initializer(0.0, 0.1), 
-                                bias_initializer=tf.random_normal_initializer(0.0, 0.1), activation='tanh'))
-
-        self.optimizer = tf.keras.optimizers.Adam(learning_rate = args.learn_rate, beta_1 = args.beta1)
-
+        self.Generator.add(Conv2DTranspose(filters=3, strides=2, kernel_size=[2,2], use_bias=True, padding='same', activation='tanh'))
         self.bce = tf.keras.losses.BinaryCrossentropy(from_logits=False)
-
 
     # @tf.function
     def call(self, inputs):
@@ -165,9 +149,7 @@ class Generator_Model(tf.keras.Model):
         :return: loss, the cross entropy loss, scalar
         """
         # TODO: Calculate the loss
-        loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(labels=tf.ones_like(disc_fake_output), logits=disc_fake_output))
-        return loss
-        # return tf.reduce_mean(self.bce(tf.ones_like(disc_fake_output), disc_fake_output))
+        return tf.reduce_mean(self.bce(tf.ones_like(disc_fake_output), disc_fake_output))
 
 class Discriminator_Model(tf.keras.Model):
     def __init__(self):
@@ -177,23 +159,19 @@ class Discriminator_Model(tf.keras.Model):
         """
         # TODO: Define the model, loss, and optimizer
         self.Discriminator = tf.keras.Sequential()
-        self.Discriminator.add(tf.keras.layers.Conv2D(filters=128, strides=2, kernel_size=[4,4], use_bias=True, padding='same')) 
+        self.Discriminator.add(tf.keras.layers.Conv2D(filters=64, strides=2, kernel_size=[4,4], use_bias=True, padding='same')) 
         # self.Discriminator.add(BatchNormalization())
         self.Discriminator.add(LeakyReLU(alpha=0.2))
 
-        self.Discriminator.add(tf.keras.layers.Conv2D(filters=256, strides=2, kernel_size=[4,4], use_bias=True, padding='same'))
+        self.Discriminator.add(tf.keras.layers.Conv2D(filters=128, strides=2, kernel_size=[4,4], use_bias=True, padding='same'))
         self.Discriminator.add(BatchNormalization())
         self.Discriminator.add(LeakyReLU(alpha=0.2))
 
-        self.Discriminator.add(tf.keras.layers.Conv2D(filters=512, strides=2, kernel_size=[4,4], use_bias=True, padding='same')) 
+        self.Discriminator.add(tf.keras.layers.Conv2D(filters=256, strides=2, kernel_size=[4,4], use_bias=True, padding='same')) 
         self.Discriminator.add(BatchNormalization())
         self.Discriminator.add(LeakyReLU(alpha=0.2))
         self.Discriminator.add(Flatten())
-        # self.Discriminator.add(Dense(1, activation='sigmoid'))
-        self.Discriminator.add(Dense(1))
-
-        self.optimizer = tf.keras.optimizers.Adam(learning_rate = args.learn_rate, beta_1 = args.beta1)
-
+        self.Discriminator.add(Dense(1, activation='sigmoid'))
         self.bce = tf.keras.losses.BinaryCrossentropy(from_logits=False)
 
     @tf.function
@@ -219,14 +197,8 @@ class Discriminator_Model(tf.keras.Model):
         :return: loss, the combined cross entropy loss, scalar
         """
         # TODO: Calculate the loss
-        # print(tf.zeros_like(disc_fake_output))
-        # print(disc_fake_output)
-
-        # loss = tf.reduce_mean(self.bce(tf.zeros_like(disc_fake_output), disc_fake_output)) + \
-        #     tf.reduce_mean(self.bce(tf.ones_like(disc_real_output), disc_real_output))
-
-        loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(labels=tf.zeros_like(disc_fake_output), logits=disc_fake_output))
-        loss += tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(labels=tf.ones_like(disc_real_output), logits=disc_real_output))
+        loss = tf.reduce_mean(self.bce(tf.zeros_like(disc_fake_output), disc_fake_output)) + \
+            tf.reduce_mean(self.bce(tf.ones_like(disc_real_output), disc_real_output))
         return loss
 
 ## --------------------------------------------------------------------------------------
@@ -244,12 +216,15 @@ def train(generator, discriminator, dataset_iterator, manager):
     :return: The average FID score over the epoch
     """
     # Loop over our data until we run out
+
+    optimizer = tf.keras.optimizers.Adam(learning_rate = args.learn_rate, beta_1 = args.beta1)
+    fid_sum = 0
+    counter = 0
     for iteration, batch in enumerate(dataset_iterator):
         # TODO: Train the model
-        bsz = args.z_dim 
-        inputs = np.random.normal(loc=5, scale=5, size=(bsz, 1)).astype(np.float32)
-        gen_optimizer = generator.optimizer
-        dis_optimizer = discriminator.optimizer
+        bsz = args.batch_size
+        z_dim = args.z_dim
+        inputs = np.random.uniform(low=-1, high=1, size=(bsz, z_dim)).astype(np.float32)
 
         with tf.GradientTape(persistent=True) as tape:
             # Create a batch of fake data using the generator.
@@ -261,16 +236,16 @@ def train(generator, discriminator, dataset_iterator, manager):
             
             # Calculate the loss for the generator and discriminator separately
             g_loss = generator.loss_function(logits_fake)
-            d_loss = discriminator.loss_function(logits_fake, logits_real)
+            d_loss = discriminator.loss_function(logits_real, logits_fake)
   
         # Optimize the discriminator
         if iteration % 2 == 0:
             d_gradients = tape.gradient(d_loss, discriminator.trainable_variables)
-            dis_optimizer.apply_gradients(zip(d_gradients, discriminator.trainable_variables))
+            optimizer.apply_gradients(zip(d_gradients, discriminator.trainable_variables))
         
         # Optimize the generator
         g_gradients = tape.gradient(g_loss, generator.trainable_variables)
-        gen_optimizer.apply_gradients(zip(g_gradients, generator.trainable_variables))
+        optimizer.apply_gradients(zip(g_gradients, generator.trainable_variables))
 
         # Save
         if iteration % args.save_every == 0:
@@ -278,12 +253,15 @@ def train(generator, discriminator, dataset_iterator, manager):
 
         # Calculate inception distance and track the fid in order
         # to return the average
-        if iteration % 10 == 0:
+        if iteration % 500 == 0:
             fid_ = fid_function(batch, gen_output)
+            counter += 1
+            fid_sum += fid_
             print('**** INCEPTION DISTANCE: %g ****' % fid_)
 
         print(f'g_loss: {g_loss:.6f}, d_loss: {d_loss:.6f}')
-
+    
+    return (fid_sum/counter).numpy()
 
 # Test the model by generating some samples.
 def test(generator):
@@ -295,7 +273,8 @@ def test(generator):
     :return: None
     """
     # TODO: Replace 'None' with code to sample a batch of random images
-    img = None    
+    img =  np.random.uniform(low=-1, high=1, size=(args.batch_size, 100)).astype(np.float32)
+    img = generator.call(img).numpy()
 
     ### Below, we've already provided code to save these generated images to files on disk
     # Rescale the image from (-1, 1) to (0, 255)
@@ -335,7 +314,7 @@ def main():
         # Specify an invalid GPU device
         with tf.device('/device:' + args.device):
             if args.mode == 'train':
-                start_time = time.time
+                start_time = time.time()
                 for epoch in range(0, args.num_epochs):
                     print('========================== EPOCH %d  ==========================' % epoch)
                     avg_fid = train(generator, discriminator, dataset_iterator, manager)
@@ -343,8 +322,8 @@ def main():
                     # Save at the end of the epoch, too
                     print("**** SAVING CHECKPOINT AT END OF EPOCH ****")
                     manager.save()
-                end_time = time.time
-                print(f'training time is: {(end_time-start_time)/60}')
+                end_time = time.time()
+                print(f'training time is: {(end_time-start_time)/60} mins')
             if args.mode == 'test':
                 test(generator)
     except RuntimeError as e:
