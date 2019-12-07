@@ -114,16 +114,16 @@ class Generator_Model(tf.keras.Model):
         self.Generator = tf.keras.Sequential()
         self.Generator.add(Dense(512*4*4))
         self.Generator.add( Reshape( (4,4,512)))
-        self.Generator.add(Conv2DTranspose(filters=256, strides=2, kernel_size=[2,2], use_bias=True, padding='same') )
+        self.Generator.add(Conv2DTranspose(filters=256, strides=2, kernel_size=[5,5], use_bias=True, padding='same') )
         self.Generator.add(BatchNormalization())
         self.Generator.add(tf.keras.layers.ReLU())
-        self.Generator.add(Conv2DTranspose(filters=128, strides=2, kernel_size=[2,2], use_bias=True, padding='same') )
+        self.Generator.add(Conv2DTranspose(filters=128, strides=2, kernel_size=[5,5], use_bias=True, padding='same') )
         self.Generator.add(BatchNormalization())
         self.Generator.add(tf.keras.layers.ReLU())
-        self.Generator.add(Conv2DTranspose(filters=64, strides=2, kernel_size=[2,2], use_bias=True, padding='same') )
+        self.Generator.add(Conv2DTranspose(filters=64, strides=2, kernel_size=[5,5], use_bias=True, padding='same') )
         self.Generator.add(BatchNormalization())
         self.Generator.add(tf.keras.layers.ReLU())
-        self.Generator.add(Conv2DTranspose(filters=3, strides=2, kernel_size=[2,2], use_bias=True, padding='same', activation='tanh'))
+        self.Generator.add(Conv2DTranspose(filters=3, strides=2, kernel_size=[5,5], use_bias=True, padding='same', activation='tanh'))
         self.bce = tf.keras.losses.BinaryCrossentropy(from_logits=False)
 
     # @tf.function
@@ -159,15 +159,15 @@ class Discriminator_Model(tf.keras.Model):
         """
         # TODO: Define the model, loss, and optimizer
         self.Discriminator = tf.keras.Sequential()
-        self.Discriminator.add(tf.keras.layers.Conv2D(filters=64, strides=2, kernel_size=[4,4], use_bias=True, padding='same')) 
+        self.Discriminator.add(tf.keras.layers.Conv2D(filters=64, strides=2, kernel_size=[5,5], use_bias=True, padding='same')) 
         # self.Discriminator.add(BatchNormalization())
         self.Discriminator.add(LeakyReLU(alpha=0.2))
 
-        self.Discriminator.add(tf.keras.layers.Conv2D(filters=128, strides=2, kernel_size=[4,4], use_bias=True, padding='same'))
+        self.Discriminator.add(tf.keras.layers.Conv2D(filters=128, strides=2, kernel_size=[5,5], use_bias=True, padding='same'))
         self.Discriminator.add(BatchNormalization())
         self.Discriminator.add(LeakyReLU(alpha=0.2))
 
-        self.Discriminator.add(tf.keras.layers.Conv2D(filters=256, strides=2, kernel_size=[4,4], use_bias=True, padding='same')) 
+        self.Discriminator.add(tf.keras.layers.Conv2D(filters=256, strides=2, kernel_size=[5,5], use_bias=True, padding='same')) 
         self.Discriminator.add(BatchNormalization())
         self.Discriminator.add(LeakyReLU(alpha=0.2))
         self.Discriminator.add(Flatten())
@@ -226,7 +226,7 @@ def train(generator, discriminator, dataset_iterator, manager):
         z_dim = args.z_dim
         inputs = np.random.uniform(low=-1, high=1, size=(bsz, z_dim)).astype(np.float32)
 
-        with tf.GradientTape(persistent=True) as tape:
+        with tf.GradientTape(persistent=True) as g_tape, tf.GradientTape(persistent=True) as d_tape:
             # Create a batch of fake data using the generator.
             gen_output = generator.call(inputs)
 
@@ -235,17 +235,17 @@ def train(generator, discriminator, dataset_iterator, manager):
             logits_real = discriminator(batch)
             
             # Calculate the loss for the generator and discriminator separately
-            g_loss = generator.loss_function(logits_fake)
             d_loss = discriminator.loss_function(logits_real, logits_fake)
+            g_loss = generator.loss_function(logits_fake)
   
         # Optimize the discriminator
-        if iteration % 2 == 0:
-            d_gradients = tape.gradient(d_loss, discriminator.trainable_variables)
-            optimizer.apply_gradients(zip(d_gradients, discriminator.trainable_variables))
+        d_gradients = d_tape.gradient(d_loss, discriminator.trainable_variables)
+        optimizer.apply_gradients(zip(d_gradients, discriminator.trainable_variables))
         
         # Optimize the generator
-        g_gradients = tape.gradient(g_loss, generator.trainable_variables)
-        optimizer.apply_gradients(zip(g_gradients, generator.trainable_variables))
+        for _ in range(0, args.num_gen_updates):
+            g_gradients = g_tape.gradient(g_loss, generator.trainable_variables)
+            optimizer.apply_gradients(zip(g_gradients, generator.trainable_variables))
 
         # Save
         if iteration % args.save_every == 0:
@@ -253,7 +253,7 @@ def train(generator, discriminator, dataset_iterator, manager):
 
         # Calculate inception distance and track the fid in order
         # to return the average
-        if iteration % 500 == 0:
+        if iteration % 50 == 0:
             fid_ = fid_function(batch, gen_output)
             counter += 1
             fid_sum += fid_
