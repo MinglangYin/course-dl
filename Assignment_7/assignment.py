@@ -259,7 +259,7 @@ def train(generator, discriminator, dataset_iterator, manager):
             fid_sum += fid_
             print('**** INCEPTION DISTANCE: %g ****' % fid_)
 
-        print(f'g_loss: {g_loss:.6f}, d_loss: {d_loss:.6f}')
+        # print(f'g_loss: {g_loss:.6f}, d_loss: {d_loss:.6f}')
     
     return (fid_sum/counter).numpy()
 
