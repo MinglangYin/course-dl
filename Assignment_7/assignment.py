@@ -314,7 +314,6 @@ def main():
         # Specify an invalid GPU device
         with tf.device('/device:' + args.device):
             if args.mode == 'train':
-                start_time = time.time()
                 for epoch in range(0, args.num_epochs):
                     print('========================== EPOCH %d  ==========================' % epoch)
                     avg_fid = train(generator, discriminator, dataset_iterator, manager)
@@ -322,8 +321,6 @@ def main():
                     # Save at the end of the epoch, too
                     print("**** SAVING CHECKPOINT AT END OF EPOCH ****")
                     manager.save()
-                end_time = time.time()
-                print(f'training time is: {(end_time-start_time)/60} mins')
             if args.mode == 'test':
                 test(generator)
     except RuntimeError as e:
