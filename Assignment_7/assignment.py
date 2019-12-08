@@ -253,7 +253,7 @@ def train(generator, discriminator, dataset_iterator, manager):
 
         # Calculate inception distance and track the fid in order
         # to return the average
-        if iteration % 50 == 0:
+        if iteration % 500 == 0:
             fid_ = fid_function(batch, gen_output)
             counter += 1
             fid_sum += fid_
